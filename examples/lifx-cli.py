@@ -47,8 +47,7 @@ class bulbs():
         loop.create_task(bulb.get_wififirmware())
         loop.create_task(bulb.get_hostfirmware())
         self.bulbs.append(bulb)
-        self.bulbs.sort(key=lambda x: x.label or x.mac_addr)
-        
+
     def unregister(self,bulb):
         idx=0
         for x in list([ y.mac_addr for y in self.bulbs]):
