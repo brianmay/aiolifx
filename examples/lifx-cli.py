@@ -25,6 +25,9 @@ import sys
 import asyncio as aio
 import aiolifx as alix
 from functools import partial
+
+from aiolifx.aiolifx import DeviceOffline
+
 UDP_BROADCAST_PORT = 56700
 
 #Simple bulb control frpm console
@@ -36,12 +39,13 @@ class bulbs():
         self.boi=None #bulb of interest
         
     def register(self,bulb):
-        bulb.get_label()
-        bulb.get_location()
-        bulb.get_version()
-        bulb.get_group()
-        bulb.get_wififirmware()
-        bulb.get_hostfirmware()
+        loop = aio.get_event_loop()
+        loop.create_task(bulb.get_label())
+        loop.create_task(bulb.get_location())
+        loop.create_task(bulb.get_version())
+        loop.create_task(bulb.get_group())
+        loop.create_task(bulb.get_wififirmware())
+        loop.create_task(bulb.get_hostfirmware())
         self.bulbs.append(bulb)
         self.bulbs.sort(key=lambda x: x.label or x.mac_addr)
         
@@ -52,11 +56,17 @@ class bulbs():
                 del(self.bulbs[idx])
                 break
             idx+=1
-            
+
+
 def readin():
     """Reading from stdin and displaying menu"""
 
     selection = sys.stdin.readline().strip("\n")
+    loop = aio.get_event_loop()
+    loop.create_task(readin_process(selection))
+
+
+async def readin_process(selection):
     MyBulbs.bulbs.sort(key=lambda x: x.label or x.mac_addr)
     lov=[ x for x in selection.split(" ") if x != ""]
     if lov:
@@ -67,30 +77,37 @@ def readin():
                     MyBulbs.boi=None
                 elif int(lov[0]) == 1:
                     if len(lov) >1:
-                        MyBulbs.boi.set_power(lov[1].lower() in ["1","on","true"]) 
-                        MyBulbs.boi=None
+                        try:
+                            await MyBulbs.boi.set_power(lov[1].lower() in ["1","on","true"])
+                            MyBulbs.boi = None
+                        except DeviceOffline:
+                            print("Error: Device is offline")
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
                     if len(lov) >2:
                         try:
-                            MyBulbs.boi.set_color([58275,0, 
+                            await MyBulbs.boi.set_color([58275,0,
                                     int(round((float(lov[1])*65365.0)/100.0)),
                                     int(round(float(lov[2])))])
                             
                             MyBulbs.boi=None
-                        except:
+                        except DeviceOffline:
+                            print("Error: Device is offline")
+                        except (IndexError, ValueError):
                             print("Error: For white brightness (0-100) and temperature (2500-9000) must be numbers.\n")
                     else:
                         print("Error: For white you must indicate brightness (0-100) and temperature (2500-9000)\n")
                 elif int(lov[0]) == 3:
                     if len(lov) >3:
                         try:
-                            MyBulbs.boi.set_color([int(round((float(lov[1])*65535.0)/360.0)),
+                            await MyBulbs.boi.set_color([int(round((float(lov[1])*65535.0)/360.0)),
                                     int(round((float(lov[2])*65535.0)/100.0)),
                                     int(round((float(lov[3])*65535.0)/100.0)),3500])
                             MyBulbs.boi=None
-                        except:
+                        except DeviceOffline:
+                            print("Error: Device is offline")
+                        except (IndexError, ValueError):
                             print("Error: For colour hue (0-360), saturation (0-100) and brightness (0-100)) must be numbers.\n")
                     else:
                         print("Error: For colour you must indicate hue (0-360), saturation (0-100) and brightness (0-100))\n")
@@ -103,12 +120,12 @@ def readin():
                     print(MyBulbs.boi.device_firmware_str("   "))
                     MyBulbs.boi=None
                 elif int(lov[0]) == 6: 
-                    mypartial=partial(MyBulbs.boi.device_radio_str)
-                    MyBulbs.boi.get_wifiinfo(callb=lambda x,y:print("\n"+mypartial(y)))
+                    resp = await MyBulbs.boi.get_wifiinfo()
+                    print(MyBulbs.boi.device_radio_str(resp))
                     MyBulbs.boi=None
                 elif int(lov[0]) == 7: 
-                    mypartial=partial(MyBulbs.boi.device_time_str)
-                    MyBulbs.boi.get_hostinfo(callb=lambda x,y:print("\n"+mypartial(y)))
+                    resp = await MyBulbs.boi.get_hostinfo()
+                    print(MyBulbs.boi.device_time_str(resp))
                     MyBulbs.boi=None
                 elif int(lov[0]) == 8: 
                     if len(lov) >3:
@@ -116,14 +133,16 @@ def readin():
                             print ( "Sending {}".format([int(round((float(lov[1])*65535.0)/360.0)),
                                     int(round((float(lov[2])*65535.0)/100.0)),
                                     int(round((float(lov[3])*65535.0)/100.0)),3500]))
-                            MyBulbs.boi.set_waveform({"color":[int(round((float(lov[1])*65535.0)/360.0)),
+                            await MyBulbs.boi.set_waveform({"color":[int(round((float(lov[1])*65535.0)/360.0)),
                                                                int(round((float(lov[2])*65535.0)/100.0)),
                                                                int(round((float(lov[3])*65535.0)/100.0)),
                                                                3500],
                                                       "transient":1, "period":100, "cycles":30,
                                                       "duty_cycle":0,"waveform":0})
                             MyBulbs.boi=None
-                        except:
+                        except DeviceOffline:
+                            print("Error: Device is offline")
+                        except (IndexError, ValueError):
                             print("Error: For pulse hue (0-360), saturation (0-100) and brightness (0-100)) must be numbers.\n")
                     else:
                         print("Error: For pulse you must indicate hue (0-360), saturation (0-100) and brightness (0-100))\n")

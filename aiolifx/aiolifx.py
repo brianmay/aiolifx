@@ -55,6 +55,11 @@ def mac_to_ipv6_linklocal(mac,prefix):
 def nanosec_to_hours(ns):
     return ns/(1000000000.0*60*60)
 
+
+class DeviceOffline(Exception):
+    pass
+
+
 class Device(aio.DatagramProtocol):
     # mac_addr is a string, with the ":" and everything.
     # ip_addr is a string with the ip address
@@ -71,7 +76,7 @@ class Device(aio.DatagramProtocol):
         self.transport = None
         self.task = None
         self.seq = 0
-        # Key is the message sequence, value is (Response, Event, callb )
+        # Key is the message sequence, value is (response type, Event, response)
         self.message = {}
         self.source_id = random.randint(0, (2**32)-1)
         #Default callback for unexpected messages
@@ -107,21 +112,11 @@ class Device(aio.DatagramProtocol):
         response = unpack_lifx_message(data)
         if response.seq_num in self.message:
             self.lastmsg=datetime.datetime.now()
-            response_type,myevent,callb = self.message[response.seq_num]
+            response_type,myevent,__ = self.message[response.seq_num]
             if type(response) == response_type:
                 if response.source_id == self.source_id:
-                    if "State" in response.__class__.__name__:
-                        setmethod="resp_set_"+response.__class__.__name__.replace("State","").lower()
-                        if setmethod in dir(self) and callable(getattr(self,setmethod)):
-                            getattr(self,setmethod)(response)   
-                    if callb:
-                        callb(self,response)
+                    self.message[response.seq_num][2] = response
                     myevent.set()
-                del(self.message[response.seq_num])
-            elif type(response) == Acknowledgement:
-                pass
-            else:
-                del(self.message[response.seq_num])
         elif self.default_callb:
             self.default_callb(response)
 
@@ -165,7 +160,7 @@ class Device(aio.DatagramProtocol):
     # Don't wait for Acks or Responses, just send the same message repeatedly as fast as possible
     def fire_and_forget(self, msg_type, payload={}, timeout_secs=None, num_repeats=None):
         msg = msg_type(self.mac_addr, self.source_id, seq_num=0, payload=payload, ack_requested=False, response_requested=False)
-        xx=self.loop.create_task(self.fire_sending(msg,num_repeats))
+        self.loop.create_task(self.fire_sending(msg,num_repeats))
         return True
 
 
@@ -183,61 +178,53 @@ class Device(aio.DatagramProtocol):
             attempts += 1
             self.transport.sendto(msg.packed_message)
             try:
-                myresult = await aio.wait_for(event.wait(),timeout_secs)
+                await aio.wait_for(event.wait(),timeout_secs)
                 break
-            except Exception as inst:
+            except aio.TimeoutError as inst:
                 if attempts >= max_attempts:
                     if msg.seq_num in self.message:
-                        callb = self.message[msg.seq_num][2]
-                        if callb:
-                            callb(self, None)
                         del(self.message[msg.seq_num])
                     #It's dead Jim
                     self.unregister()
+                    raise DeviceOffline()
+        result = self.message[msg.seq_num][2]
+        del (self.message[msg.seq_num])
+        return result
+
 
     # Usually used for Set messages
-    def req_with_ack(self, msg_type, payload, callb = None, timeout_secs=None, max_attempts=None):
+    async def req_with_ack(self, msg_type, payload, timeout_secs=None, max_attempts=None):
         msg = msg_type(self.mac_addr, self.source_id, seq_num=self.seq_next(), payload=payload, ack_requested=True, response_requested=False)
-        self.message[msg.seq_num]=[Acknowledgement,None,callb]
-        xx=self.loop.create_task(self.try_sending(msg,timeout_secs, max_attempts))
-        return True
+        self.message[msg.seq_num]=[Acknowledgement,None,None]
+        return await self.try_sending(msg,timeout_secs, max_attempts)
     
     # Usually used for Get messages, or for state confirmation after Set (hence the optional payload)
-    def req_with_resp(self, msg_type, response_type, payload={}, callb = None, timeout_secs=None, max_attempts=None):
+    async def req_with_resp(self, msg_type, response_type, payload={}, timeout_secs=None, max_attempts=None):
         msg = msg_type(self.mac_addr, self.source_id, seq_num=self.seq_next(), payload=payload, ack_requested=False, response_requested=True) 
-        self.message[msg.seq_num]=[response_type,None,callb]
-        xx=self.loop.create_task(self.try_sending(msg,timeout_secs, max_attempts))
-        return True
+        self.message[msg.seq_num]=[response_type,None,None]
+        return await self.try_sending(msg,timeout_secs, max_attempts)
     
     # Not currently implemented, although the LIFX LAN protocol supports this kind of workflow natively
-    def req_with_ack_resp(self, msg_type, response_type, payload, callb = None, timeout_secs=None, max_attempts=None):
+    async def req_with_ack_resp(self, msg_type, response_type, payload, timeout_secs=None, max_attempts=None):
         msg = msg_type(self.mac_addr, self.source_id, seq_num=self.seq_next(), payload=payload, ack_requested=True, response_requested=True) 
-        self.message[msg.seq_num]=[response_type,None,callb]
-        xx=self.loop.create_task(self.try_sending(msg,timeout_secs, max_attempts))
-        return True
+        self.message[msg.seq_num]=[response_type,None,None]
+        return await self.try_sending(msg,timeout_secs, max_attempts)
     
     
     #
     #                            Attribute Methods
     #
-    def get_label(self,callb=None):
+    async def get_label(self):
         if self.label is None:
-            mypartial=partial(self.resp_set_label)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetLabel, StateLabel, callb=mycallb )
+            resp = await self.req_with_resp(GetLabel, StateLabel)
+            self.resp_set_label(resp)
         return self.label
     
-    def set_label(self, value,callb=None):
+    async def set_label(self, value):
         if len(value) > 32:
             value = value[:32]
-        mypartial=partial(self.resp_set_label,label=value)
-        if callb:
-            self.req_with_ack(SetLabel, {"label": value},lambda x,y:(mypartial(y),callb(x,y)) )
-        else:
-            self.req_with_ack(SetLabel, {"label": value},lambda x,y:mypartial(y) )
+        await self.req_with_ack(SetLabel, {"label": value})
+        self.label = value
         
     def resp_set_label(self, resp, label=None):
         if label:
@@ -245,22 +232,16 @@ class Device(aio.DatagramProtocol):
         elif resp:
             self.label=resp.label.decode().replace("\x00", "") 
 
-    def get_location(self,callb=None):
+    async def get_location(self):
         if self.location is None:
-            mypartial=partial(self.resp_set_location)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetLocation, StateLocation,callb=mycallb )
+            resp = await self.req_with_resp(GetLocation, StateLocation)
+            self.resp_set_location(resp)
         return self.location
     
-    #def set_location(self, value,callb=None):
-        #mypartial=partial(self.resp_set_location,location=value)
-        #if callb:
-            #self.req_with_ack(SetLocation, {"location": value},lambda x,y:(mypartial(y),callb(x,y)) )
-        #else:
-            #self.req_with_ack(SetLocation, {"location": value},lambda x,y:mypartial(y) )
+    # async def set_location(self, value):
+    #     resp = await self.req_with_ack(SetLocation, {"location": value})
+    #     self.resp_set_location(resp)
+    #     return self.location
         
     def resp_set_location(self, resp, location=None):
         if location:
@@ -268,71 +249,55 @@ class Device(aio.DatagramProtocol):
         elif resp:
             self.location=resp.label.decode().replace("\x00", "") 
             #self.resp_set_label(resp)
-            
-            
-    def get_group(self,callb=None):
+
+    async def get_group(self):
         if self.group is None:
-            mypartial=partial(self.resp_set_group)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetGroup, StateGroup, callb=callb )
+            resp = await self.req_with_resp(GetGroup, StateGroup)
+            self.resp_set_group(resp)
         return self.group
     
-    #Not implemented. hy?
-    #def set_group(self, value,callb=None):
-        #if callb:
-            #self.req_with_ack(SetGroup, {"group": value},lambda x,y:(partial(self.resp_set_group,group=value)(y),callb(x,y)) )
-        #else:
-            #self.req_with_ack(SetGroup, {"group": value},lambda x,y:partial(self.resp_set_group,group=value)(y) )
-        
+    # async def set_group(self, value):
+    #     resp = await self.req_with_ack(SetGroup, {"group": value})
+    #     self.resp_set_group(resp)
+    #     return self.group
+
     def resp_set_group(self, resp, group=None):
         if group:
             self.group=group
         elif resp:
             self.group=resp.label.decode().replace("\x00", "")
-            
-            
-    def get_power(self,callb=None):
-        if self.power_level is None:
-            response = self.req_with_resp(GetPower, StatePower, callb=callb )
+
+    async def get_power(self):
+        resp = await self.req_with_resp(GetPower, StatePower)
+        self.resp_set_power(resp)
         return self.power_level
     
-    def set_power(self, value,callb=None,rapid=False):
+    async def set_power(self, value,rapid=False):
         on = [True, 1, "on"]
         off = [False, 0, "off"]
-        mypartial=partial(self.resp_set_power,power_level=value)
-        if callb:
-            mycallb=lambda x,y:(mypartial(y),callb(x,y))
+
+        if value in on:
+            value = 65535
+        elif value in off:
+            value = 0
+
+        if not rapid:
+            resp = await self.req_with_ack(SetPower, {"power_level": value})
         else:
-            mycallb=lambda x,y:mypartial(y)
-        if value in on and not rapid:
-            response = self.req_with_ack(SetPower, {"power_level": 65535},mycallb)
-        elif value in off and not rapid:
-            response = self.req_with_ack(SetPower, {"power_level": 0},mycallb)
-        elif value in on and rapid:
-            response = self.fire_and_forget(SetPower, {"power_level": 65535})
-            self.power_level=65535
-        elif value in off and rapid:
-            response = self.fire_and_forget(SetPower, {"power_level": 0})
-            self.power_level=0
+            self.fire_and_forget(SetPower, {"power_level": value})
+        self.power_level=value
+        return self.power_level
 
     def resp_set_power(self, resp, power_level=None):
         if power_level is not None:
             self.power_level=power_level
         elif resp:
             self.power_level=resp.power_level 
-            
-            
-    def get_wififirmware(self,callb=None):
+
+    async def get_wififirmware(self):
         if self.wifi_firmware_version is None:
-            mypartial=partial(self.resp_set_wififirmware)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetWifiFirmware, StateWifiFirmware,mycallb )
+            resp = await self.req_with_resp(GetWifiFirmware, StateWifiFirmware)
+            self.resp_set_wififirmware(resp)
         return (self.wifi_firmware_version,self.wifi_firmware_build_timestamp)
     
     def resp_set_wififirmware(self, resp):
@@ -341,19 +306,14 @@ class Device(aio.DatagramProtocol):
             self.wifi_firmware_build_timestamp = resp.build
     
     #Too volatile to be saved
-    def get_wifiinfo(self,callb=None):
-        response = self.req_with_resp(GetWifiInfo, StateWifiInfo,callb=callb )
-        return None
-             
-            
-    def get_hostfirmware(self,callb=None):
+    async def get_wifiinfo(self):
+        resp = await self.req_with_resp(GetWifiInfo, StateWifiInfo)
+        return resp
+
+    async def get_hostfirmware(self):
         if self.host_firmware_version is None:
-            mypartial=partial(self.resp_set_hostfirmware)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetHostFirmware, StateHostFirmware,mycallb )
+            resp = await self.req_with_resp(GetHostFirmware, StateHostFirmware)
+            self.resp_set_hostfirmware(resp)
         return (self.host_firmware_version,self.host_firmware_build_timestamp)
     
     def resp_set_hostfirmware(self, resp):
@@ -362,18 +322,14 @@ class Device(aio.DatagramProtocol):
             self.host_firmware_build_timestamp = resp.build
     
     #Too volatile to be saved
-    def get_hostinfo(self,callb=None):
-        response = self.req_with_resp(GetInfo, StateInfo,callb=callb )
-        return None
+    async def get_hostinfo(self):
+        resp = await self.req_with_resp(GetInfo, StateInfo)
+        return resp
             
-    def get_version(self,callb=None):
+    async def get_version(self,callb=None):
         if self.vendor is None:
-            mypartial=partial(self.resp_set_version)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            response = self.req_with_resp(GetVersion, StateVersion,callb=mycallb )
+            resp = await self.req_with_resp(GetVersion, StateVersion)
+            self.resp_set_version(resp)
         return (self.host_firmware_version,self.host_firmware_build_timestamp)
     
     def resp_set_version(self, resp):
@@ -445,30 +401,26 @@ class Light(Device):
         self.color_zones = None
         self.infrared_brightness = None
 
-    def get_power(self,callb=None):
-        if self.power_level is None:
-            response = self.req_with_resp(LightGetPower, LightStatePower, callb=callb )
+    async def get_power(self):
+        resp = await self.req_with_resp(LightGetPower, LightStatePower)
+        self.resp_set_power(resp)
         return self.power_level
-    
-    def set_power(self, value,callb=None,duration=0,rapid=False):
+
+    async def set_power(self, value,duration=0,rapid=False):
         on = [True, 1, "on"]
         off = [False, 0, "off"]
+
         if value in on:
-            myvalue = 65535
-        else:
-            myvalue = 0
-        mypartial=partial(self.resp_set_lightpower,power_level=myvalue)
-        if callb:
-            mycallb=lambda x,y:(mypartial(y),callb(x,y))
-        else:
-            mycallb=lambda x,y:mypartial(y)
+            value = 65535
+        elif value in off:
+            value = 0
+
         if not rapid:
-            response = self.req_with_ack(LightSetPower, {"power_level": myvalue, "duration": duration},callb=mycallb)
+            await self.req_with_ack(LightSetPower, {"power_level": value, "duration": duration})
         else:
-            response = self.fire_and_forget(LightSetPower, {"power_level": myvalue, "duration": duration}, num_repeats=1)
-            self.power_level=myvalue 
-            if callb:
-                callb(self,None)
+            self.fire_and_forget(LightSetPower, {"power_level": value, "duration": duration}, num_repeats=1)
+        self.power_level=value
+        return self.power_level
 
     #Here lightpower because LightStatePower message will give lightpower
     def resp_set_lightpower(self, resp, power_level=None):
@@ -478,28 +430,20 @@ class Light(Device):
             self.power_level=resp.power_level 
             
     # LightGet, color, power_level, label
-    def get_color(self,callb=None):
-        response = self.req_with_resp(LightGet, LightState, callb=callb)
+    async def get_color(self):
+        resp = await self.req_with_resp(LightGet, LightState)
+        self.resp_set_light(resp)
         return self.color
    
     # color is [Hue, Saturation, Brightness, Kelvin], duration in ms
-    def set_color(self, value, callb=None, duration=0, rapid=False):
+    async def set_color(self, value, duration=0, rapid=False):
         if len(value) == 4:
-            mypartial=partial(self.resp_set_light,color=value)
-            if callb:
-                mycallb=lambda x,y:(mypartial(y),callb(x,y))
-            else:
-                mycallb=lambda x,y:mypartial(y)
-            #try:
             if rapid:
                 self.fire_and_forget(LightSetColor, {"color": value, "duration": duration}, num_repeats=1)
-                self.resp_set_light(None,color=value)
-                if callb:
-                    callb(self,None)
             else:
-                self.req_with_ack(LightSetColor, {"color": value, "duration": duration},callb=mycallb)
-            #except WorkflowException as e:
-                #print(e)
+                await self.req_with_ack(LightSetColor, {"color": value, "duration": duration})
+        self.resp_set_light(None, color=value)
+        return self.color
 
     #Here light because LightState message will give light
     def resp_set_light(self, resp, color=None):
@@ -511,16 +455,17 @@ class Light(Device):
             self.label = resp.label.decode().replace("\x00", "")
  
     # Multizone
-    def get_color_zones(self, start_index, end_index=None, callb=None):
+    async def get_color_zones(self, start_index, end_index=None):
         if end_index is None:
             end_index = start_index + 8
         args = {
             "start_index": start_index,
             "end_index": end_index,
         }
-        self.req_with_resp(MultiZoneGetColorZones, MultiZoneStateMultiZone, payload=args, callb=callb)
+        resp = self.req_with_resp(MultiZoneGetColorZones, MultiZoneStateMultiZone, payload=args)
+        self.resp_set_multizonemultizone(resp)
 
-    def set_color_zones(self, start_index, end_index, color, duration=0, apply=1, callb=None, rapid=False):
+    async def set_color_zones(self, start_index, end_index, color, duration=0, apply=1, rapid=False):
         if len(color) == 4:
             args = {
                 "start_index": start_index,
@@ -531,9 +476,9 @@ class Light(Device):
             }
 
             if rapid:
-                self.fire_and_forget(MultiZoneSetColorZones, args, callb=callb, num_repeats=1)
+                self.fire_and_forget(MultiZoneSetColorZones, args, num_repeats=1)
             else:
-                self.req_with_ack(MultiZoneSetColorZones, args, callb=callb)
+                await self.req_with_ack(MultiZoneSetColorZones, args)
 
     # A multi-zone MultiZoneGetColorZones returns MultiZoneStateMultiZone -> multizonemultizone
     def resp_set_multizonemultizone(self, resp):
@@ -544,35 +489,27 @@ class Light(Device):
                 self.color_zones[resp.index + i] = resp.color[i]
 
     # value should be a dictionary with the the following keys: transient, color, period,cycles,duty_cycle,waveform
-    def set_waveform(self, value, callb=None, rapid=False):
+    async def set_waveform(self, value, rapid=False):
         if "color" in value and len(value["color"]) == 4:
-            #try:
             if rapid:
-                self.fire_and_forget(LightSetWaveform, value, callb=callb, num_repeats=1)
+                self.fire_and_forget(LightSetWaveform, value, num_repeats=1)
             else:
-                self.req_with_ack(LightSetWaveform, value, callb=callb)
-            #except WorkflowException as e:
-                #print(e)
+                await self.req_with_ack(LightSetWaveform, value)
 
     # Infrared get maximum brightness, infrared_brightness
-    def get_infrared(self,callb=None):
-        response = self.req_with_resp(LightGetInfrared, LightStateInfrared,callb=callb)
+    async def get_infrared(self):
+        resp = await self.req_with_resp(LightGetInfrared, LightStateInfrared)
+        self.resp_set_infrared(resp)
         return self.infrared_brightness
 
     # Infrared set maximum brightness, infrared_brightness
-    def set_infrared(self, infrared_brightness, callb=None, rapid=False):
-        mypartial=partial(self.resp_set_infrared,infrared_brightness=infrared_brightness)
-        if callb:
-            mycallb=lambda x,y:(mypartial(y),callb(x,y))
-        else:
-            mycallb=lambda x,y:mypartial(y)
+    async def set_infrared(self, infrared_brightness, rapid=False):
         if rapid:
             self.fire_and_forget(LightSetInfrared, {"infrared_brightness": infrared_brightness}, num_repeats=1)
-            self.resp_set_infrared(None,infrared_brightness=infrared_brightness)
-            if callb:
-                callb(self,None)
         else:
-            self.req_with_ack(LightSetInfrared, {"infrared_brightness": infrared_brightness}, callb=mycallb)
+            await self.req_with_ack(LightSetInfrared, {"infrared_brightness": infrared_brightness})
+        self.resp_set_infrared(None, infrared_brightness=infrared_brightness)
+        return self.infrared_brightness
         
     #Here infrared because StateInfrared message will give infrared
     def resp_set_infrared(self, resp, infrared_brightness=None):
