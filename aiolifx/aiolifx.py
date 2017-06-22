@@ -337,7 +337,18 @@ class Device(aio.DatagramProtocol):
             self.vendor = resp.vendor
             self.product = resp.product
             self.version = resp.version
-    
+
+    async def get_metadata(self, *, loop):
+        tasks = [
+            self.get_label(),
+            self.get_location(),
+            self.get_version(),
+            self.get_group(),
+            self.get_wififirmware(),
+            self.get_hostfirmware(),
+        ]
+        await aio.gather(*tasks, loop=loop)
+
     #
     #                            Formating
     #

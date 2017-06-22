@@ -40,12 +40,7 @@ class bulbs():
         
     def register(self,bulb):
         loop = aio.get_event_loop()
-        loop.create_task(bulb.get_label())
-        loop.create_task(bulb.get_location())
-        loop.create_task(bulb.get_version())
-        loop.create_task(bulb.get_group())
-        loop.create_task(bulb.get_wififirmware())
-        loop.create_task(bulb.get_hostfirmware())
+        loop.create_task(bulb.get_metadata(loop=loop))
         self.bulbs.append(bulb)
 
     def unregister(self,bulb):
