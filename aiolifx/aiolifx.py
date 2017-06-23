@@ -33,7 +33,7 @@ import time, random, datetime, socket
 UDP_BROADCAST_IP = "255.255.255.255"
 UDP_BROADCAST_PORT = 56700
 DEFAULT_TIMEOUT=0.5 # How long to wait for an ack or response
-DEFAULT_ATTEMPTS=3  # How many time shou;d we try to send to the bulb`
+DEFAULT_ATTEMPTS=3  # How many time should we try to send to the bulb`
 DISCOVERY_INTERVAL=180
 DISCOVERY_STEP=5
 
