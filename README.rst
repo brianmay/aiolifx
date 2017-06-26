@@ -9,10 +9,10 @@ aiolifxc
         :target: https://travis-ci.org/brianmay/aiolifxc
 
 .. image:: https://readthedocs.org/projects/aiolifxc/badge/?version=latest
-        :target: https://robotica.readthedocs.io/en/latest/?badge=latest
+        :target: https://aiolifxc.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://pyup.io/repos/github/brianmay/robotica/shield.svg
+.. image:: https://pyup.io/repos/github/brianmay/aiolifxc/shield.svg
      :target: https://pyup.io/repos/github/brianmay/aiolifxc/
      :alt: Updates
 
