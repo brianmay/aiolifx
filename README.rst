@@ -1,4 +1,20 @@
-# aiolifxc
+========
+aiolifxc
+========
+
+.. image:: https://img.shields.io/pypi/v/aiolifxc.svg
+        :target: https://pypi.python.org/pypi/aiolifxc
+
+.. image:: https://img.shields.io/travis/brianmay/aiolifxc.svg
+        :target: https://travis-ci.org/brianmay/aiolifxc
+
+.. image:: https://readthedocs.org/projects/aiolifxc/badge/?version=latest
+        :target: https://robotica.readthedocs.io/en/latest/?badge=latest
+        :alt: Documentation Status
+
+.. image:: https://pyup.io/repos/github/brianmay/robotica/shield.svg
+     :target: https://pyup.io/repos/github/brianmay/aiolifxc/
+     :alt: Updates
 
 aiolifxc is a Python 3/asyncio library to control Lifx LED lightbulbs over your LAN.
 
@@ -16,12 +32,14 @@ well, there are still changes I wish to make that may break the API.
 
 # Installation
 
-We are on PyPi so
+We are on PyPi so::
 
      pip3 install aiolifx
-or
+
+or::
+
      python3 -m pip install aiolifx
-     
+
 NOTE: When installing with Python 3.4, the installation produce an error message
       (syntax error). This can be safely ignored. 
 
@@ -45,7 +63,7 @@ The easiest way is to look at the file in the examples directory. "Wifi" and "Up
 a callback to print the info when it is returned.
 
       
-In essence, the test program is this
+In essence, the test program is this::
 
     class bulbs():
     """ A simple class with a register and  unregister methods
