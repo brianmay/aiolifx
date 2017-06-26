@@ -1,6 +1,10 @@
+include *.rst
 include *.in
 include *.md
-recursive-include aiolifxc *.txt
-include *.txt setup.cfg
-recursive-include *.txt *.py
-prune examples
+include *.txt
+include *.ini
+
+include setup.cfg
+
+recursive-include aiolifxc *.py *.txt
+recursive-include examples *.py
