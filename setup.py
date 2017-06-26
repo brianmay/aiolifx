@@ -2,21 +2,26 @@
 # -*- coding:utf-8 -*-
 from distutils.core import setup
 
-setup(name='aiolifx',
-    packages=['aiolifx'],
-    version='0.5.0beta3',
-    author='François Wautier',
-    author_email='francois@wautier.eu',
-    description='API for local communication with LIFX devices over a LAN with asyncio.',
-    url='http://github.com/frawau/aiolifx',
-    download_url='https://github.com/frawau/aiolifx/archive/0.5.0beta3.tar.gz',  
-    keywords = ['lifx', 'light', 'automation'], 
+setup(
+    name='aiolifxc',
+    packages=['aiolifxc'],
+    version='0.5.0',
+    author='Brian May',
+    author_email='brian@linuxpenguins.xyz',
+    description='API for local communication with LIFX devices '
+                'over a LAN with asyncio.',
+    url='http://github.com/brianmay/aiolifx',
+    keywords=['lifx', 'light', 'automation'],
     license='MIT',
     install_requires=[
-    "bitstring",
+        "bitstring",
     ],
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: MIT License',
 

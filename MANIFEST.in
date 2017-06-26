@@ -1,3 +1,6 @@
+include *.in
+include *.md
+recursive-include aiolifxc *.txt
 include *.txt setup.cfg
 recursive-include *.txt *.py
 prune examples
