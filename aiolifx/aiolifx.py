@@ -339,7 +339,7 @@ class Device(aio.DatagramProtocol):
             self.version = resp.version
 
     async def get_metadata(self, *, loop):
-        tasks = [
+        coroutines = [
             self.get_label(),
             self.get_location(),
             self.get_version(),
@@ -347,7 +347,7 @@ class Device(aio.DatagramProtocol):
             self.get_wififirmware(),
             self.get_hostfirmware(),
         ]
-        await aio.gather(*tasks, loop=loop)
+        await aio.gather(*coroutines, loop=loop)
 
     #
     #                            Formating
