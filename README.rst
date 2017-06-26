@@ -18,8 +18,8 @@ aiolifxc
 
 aiolifxc is a Python 3/asyncio library to control Lifx LED lightbulbs over your LAN.
 
-Most of it was originally taken from
-`Meghan Clarkk lifxlan package <https://github.com/mclarkk>`_
+Most of it was originally taken from the
+`Meghan Clarkk lifxlan package <https://github.com/mclarkk/lifxlan>`_
 and adapted to Python 3 (and asyncio obviously)
 
 This is a fork from
