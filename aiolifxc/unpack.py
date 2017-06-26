@@ -7,6 +7,8 @@ import binascii
 # Creates a LIFX Message out of packed binary data
 # If the message type is not one of the officially released ones above, it will create just a Message out of it
 # If it's not in the LIFX protocol format, uhhhhh...we'll put that on a to-do list.
+
+
 def unpack_lifx_message(packed_message):
     header_str = packed_message[0:HEADER_SIZE_BYTES]
     payload_str = packed_message[HEADER_SIZE_BYTES:]
@@ -18,7 +20,7 @@ def unpack_lifx_message(packed_message):
     addressable = (flags >> 12) & 1
     protocol = flags & 4095
     source_id = struct.unpack("I", header_str[4:8])[0]
-    target_addr = ":".join([('%02x' % b) for b in struct.unpack("B"*6, header_str[8:14])])
+    target_addr = ":".join([('%02x' % b) for b in struct.unpack("B" * 6, header_str[8:14])])
     response_flags = struct.unpack("B", header_str[22:23])[0]
     ack_requested = response_flags & 2
     response_requested = response_flags & 1
@@ -94,12 +96,14 @@ def unpack_lifx_message(packed_message):
         message = GetLabel(target_addr, source_id, seq_num, {}, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[SetLabel]:
-        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff) for b in struct.unpack("b"*32, payload_str[0:32])]))
+        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff)
+                                            for b in struct.unpack("b" * 32, payload_str[0:32])]))
         payload = {"label": label}
         message = SetLabel(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[StateLabel]:
-        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff) for b in struct.unpack("b"*32, payload_str[0:32])]))
+        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff)
+                                            for b in struct.unpack("b" * 32, payload_str[0:32])]))
         payload = {"label": label}
         message = StateLabel(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
@@ -107,8 +111,9 @@ def unpack_lifx_message(packed_message):
         message = GetLocation(target_addr, source_id, seq_num, {}, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[StateLocation]:
-        location = [b for b in struct.unpack("B"*16, payload_str[0:16])]
-        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff) for b in struct.unpack("b"*32, payload_str[16:48])]))
+        location = [b for b in struct.unpack("B" * 16, payload_str[0:16])]
+        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff)
+                                            for b in struct.unpack("b" * 32, payload_str[16:48])]))
         updated_at = struct.unpack("Q", payload_str[48:56])[0]
         payload = {"location": location, "label": label, "updated_at": updated_at}
         message = StateLocation(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
@@ -117,8 +122,9 @@ def unpack_lifx_message(packed_message):
         message = GetGroup(target_addr, source_id, seq_num, {}, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[StateGroup]:
-        group = [b for b in struct.unpack("B"*16, payload_str[0:16])]
-        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff) for b in struct.unpack("b"*32, payload_str[16:48])]))
+        group = [b for b in struct.unpack("B" * 16, payload_str[0:16])]
+        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff)
+                                            for b in struct.unpack("b" * 32, payload_str[16:48])]))
         updated_at = struct.unpack("Q", payload_str[48:56])[0]
         payload = {"group": group, "label": label, "updated_at": updated_at}
         message = StateGroup(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
@@ -148,13 +154,13 @@ def unpack_lifx_message(packed_message):
 
     elif message_type == MSG_IDS[EchoRequest]:
         byte_array_len = len(payload_str)
-        byte_array = [b for b in struct.unpack("B"*byte_array_len, payload_str[0:byte_array_len])]
+        byte_array = [b for b in struct.unpack("B" * byte_array_len, payload_str[0:byte_array_len])]
         payload = {"byte_array": byte_array}
         message = EchoRequest(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[EchoResponse]:
         byte_array_len = len(payload_str)
-        byte_array = [b for b in struct.unpack("B"*byte_array_len, payload_str[0:byte_array_len])]
+        byte_array = [b for b in struct.unpack("B" * byte_array_len, payload_str[0:byte_array_len])]
         payload = {"byte_array": byte_array}
         message = EchoResponse(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
@@ -162,18 +168,20 @@ def unpack_lifx_message(packed_message):
         message = LightGet(target_addr, source_id, seq_num, {}, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[LightSetColor]:
-        color = struct.unpack("H"*4, payload_str[0:8])
+        color = struct.unpack("H" * 4, payload_str[0:8])
         duration = struct.unpack("I", payload_str[8:12])[0]
         payload = {"color": color, "duration": duration}
         message = LightSetColor(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[LightState]:
-        color = struct.unpack("H"*4, payload_str[0:8])
+        color = struct.unpack("H" * 4, payload_str[0:8])
         reserved1 = struct.unpack("H", payload_str[8:10])[0]
         power_level = struct.unpack("H", payload_str[10:12])[0]
-        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff) for b in struct.unpack("b"*32, payload_str[12:44])]))
+        label = binascii.unhexlify("".join(["%2.2x" % (b & 0x000000ff)
+                                            for b in struct.unpack("b" * 32, payload_str[12:44])]))
         reserved2 = struct.unpack("Q", payload_str[44:52])[0]
-        payload = {"color": color, "reserved1": reserved1, "power_level": power_level, "label": label, "reserved2": reserved2}
+        payload = {"color": color, "reserved1": reserved1,
+                   "power_level": power_level, "label": label, "reserved2": reserved2}
         message = LightState(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
     elif message_type == MSG_IDS[LightGetPower]:
@@ -203,23 +211,23 @@ def unpack_lifx_message(packed_message):
         payload = {"infrared_brightness": infrared_brightness}
         message = LightSetInfrared(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
-    elif message_type == MSG_IDS[MultiZoneStateZone]: #503
+    elif message_type == MSG_IDS[MultiZoneStateZone]:  # 503
         count = struct.unpack("c", payload_str[0:1])[0]
-        count = ord(count) # 8 bit
+        count = ord(count)  # 8 bit
         index = struct.unpack("c", payload_str[1:2])[0]
-        index = ord(index) #8 bit
+        index = ord(index)  # 8 bit
         color = struct.unpack("H" * 4, payload_str[2:10])
         payload = {"count": count, "index": index, "color": color}
         message = MultiZoneStateZone(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
 
-    elif message_type == MSG_IDS[MultiZoneStateMultiZone]: #506
+    elif message_type == MSG_IDS[MultiZoneStateMultiZone]:  # 506
         count = struct.unpack("c", payload_str[0:1])[0]
-        count = ord(count) # 8 bit
+        count = ord(count)  # 8 bit
         index = struct.unpack("c", payload_str[1:2])[0]
-        index = ord(index) #8 bit
+        index = ord(index)  # 8 bit
         colors = []
         for i in range(8):
-            color = struct.unpack("H" * 4, payload_str[2+(i*8):10+(i*8)])
+            color = struct.unpack("H" * 4, payload_str[2 + (i * 8):10 + (i * 8)])
             colors.append(color)
         payload = {"count": count, "index": index, "color": colors}
         message = MultiZoneStateMultiZone(target_addr, source_id, seq_num, payload, ack_requested, response_requested)
