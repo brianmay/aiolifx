@@ -7,4 +7,4 @@ from .unpack import unpack_lifx_message
 
 __author__ = """Brian May"""
 __email__ = 'brian@linuxpenguins.xyz'
-__version__ = '0.5.0'
+__version__ = '0.5.1'
