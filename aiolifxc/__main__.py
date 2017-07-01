@@ -23,134 +23,163 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 import sys
 import asyncio as aio
-import aiolifx as alix
-from functools import partial
-import argparse
+from typing import List, Optional
+
+import aiolifxc as alix
+
 UDP_BROADCAST_PORT = 56700
 
-# Simple bulb control frpm console
+""" Simple light control from console. """
 
 
-class bulbs():
-    """ A simple class with a register and  unregister methods
-    """
+class MyDevices(alix.Devices):
+    """ A simple class with a register and  unregister methods. """
 
-    def __init__(self):
-        self.bulbs = []
-        self.boi = None  # bulb of interest
-
-    def register(self, bulb):
-        bulb.get_label()
-        bulb.get_location()
-        bulb.get_version()
-        bulb.get_group()
-        bulb.get_wififirmware()
-        bulb.get_hostfirmware()
-        self.bulbs.append(bulb)
-        self.bulbs.sort(key=lambda x: x.label or x.mac_addr)
-        if opts.extra:
-            bulb.register_callback(lambda y: print("Unexpected message: %s" % str(y)))
-
-    def unregister(self, bulb):
-        idx = 0
-        for x in list([y.mac_addr for y in self.bulbs]):
-            if x == bulb.mac_addr:
-                del(self.bulbs[idx])
-                break
-            idx += 1
+    def __init__(self, loop: aio.AbstractEventLoop) -> None:
+        super().__init__(loop=loop)
+        self.selected = None  # type: Optional[alix.Devices]
 
 
-def readin():
+def read_in(*, loop: aio.AbstractEventLoop, devices: MyDevices) -> None:
     """Reading from stdin and displaying menu"""
 
     selection = sys.stdin.readline().strip("\n")
-    MyBulbs.bulbs.sort(key=lambda x: x.label or x.mac_addr)
+    loop.create_task(read_in_process(selection=selection, devices=devices))
+
+
+async def read_in_process(*, selection: str, devices: MyDevices) -> None:
+    selected_lights = None   # type: Optional[alix.Lights]
+    if devices.selected is not None:
+        selected_lights = devices.selected.get_clone(alix.Lights)
+
+    device_list = list(devices.device_list)  # type: List[alix.Device]
+    device_list.sort(key=lambda x: x.mac_addr)
+
     lov = [x for x in selection.split(" ") if x != ""]
     if lov:
-        if MyBulbs.boi:
+        if devices.selected is not None and selected_lights is not None:
             # try:
             if True:
                 if int(lov[0]) == 0:
-                    MyBulbs.boi = None
+                    devices.selected = None
                 elif int(lov[0]) == 1:
                     if len(lov) > 1:
-                        MyBulbs.boi.set_power(lov[1].lower() in ["1", "on", "true"])
-                        MyBulbs.boi = None
+                        try:
+                            await devices.selected.set_power(lov[1].lower() in ["1", "on", "true"])
+                            devices.selected = None
+                        except alix.DeviceOffline:
+                            print("Error: Device is offline")
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
                     if len(lov) > 2:
                         try:
-                            MyBulbs.boi.set_color([58275, 0,
-                                                   int(round((float(lov[1]) * 65365.0) / 100.0)),
-                                                   int(round(float(lov[2])))])
+                            color = alix.Color(
+                                hue=0,
+                                saturation=0,
+                                brightness=int(lov[1]),
+                                kelvin=int(lov[2]),
+                            )
+                            await selected_lights.set_color(color)
 
-                            MyBulbs.boi = None
-                        except:
+                            devices.selected = None
+                        except (IndexError, ValueError):
                             print("Error: For white brightness (0-100) and temperature (2500-9000) must be numbers.\n")
                     else:
                         print("Error: For white you must indicate brightness (0-100) and temperature (2500-9000)\n")
                 elif int(lov[0]) == 3:
                     if len(lov) > 3:
                         try:
-                            MyBulbs.boi.set_color([int(round((float(lov[1]) * 65535.0) / 360.0)),
-                                                   int(round((float(lov[2]) * 65535.0) / 100.0)),
-                                                   int(round((float(lov[3]) * 65535.0) / 100.0)), 3500])
-                            MyBulbs.boi = None
-                        except:
-                            print("Error: For colour hue (0-360), saturation (0-100) and brightness (0-100)) must be numbers.\n")
+                            color = alix.Color(
+                                hue=int(lov[1]),
+                                saturation=int(lov[2]),
+                                brightness=int(lov[3]),
+                                kelvin=3500,
+                            )
+                            await selected_lights.set_color(color)
+                            devices.selected = None
+                        except (IndexError, ValueError):
+                            print("Error: For colour hue (0-360), "
+                                  "saturation (0-100) and brightness (0-100) "
+                                  "must be numbers.\n")
                     else:
-                        print("Error: For colour you must indicate hue (0-360), saturation (0-100) and brightness (0-100))\n")
+                        print("Error: For colour you must indicate hue (0-360), "
+                              "saturation (0-100) and brightness (0-100)\n")
 
                 elif int(lov[0]) == 4:
-                    print(MyBulbs.boi.device_characteristics_str("    "))
-                    print(MyBulbs.boi.device_product_str("    "))
-                    MyBulbs.boi = None
+                    for device in device_list:
+                        await device.get_power()
+                        await device.get_group()
+                        await device.get_location()
+                        await device.get_version()
+                        print(device.device_characteristics_str("    "))
+                        print(device.device_product_str("    "))
+                    devices.selected = None
                 elif int(lov[0]) == 5:
-                    print(MyBulbs.boi.device_firmware_str("   "))
-                    MyBulbs.boi = None
+                    for device in device_list:
+                        await device.get_host_firmware()
+                        await device.get_wifi_firmware()
+                        print(device.device_firmware_str("   "))
+                    devices.selected = None
                 elif int(lov[0]) == 6:
-                    mypartial = partial(MyBulbs.boi.device_radio_str)
-                    MyBulbs.boi.get_wifiinfo(callb=lambda x, y: print("\n" + mypartial(y)))
-                    MyBulbs.boi = None
+                    for device in device_list:
+                        wifi_info = await device.get_wifi_info()
+                        print(device.device_radio_str(wifi_info))
+                    devices.selected = None
                 elif int(lov[0]) == 7:
-                    mypartial = partial(MyBulbs.boi.device_time_str)
-                    MyBulbs.boi.get_hostinfo(callb=lambda x, y: print("\n" + mypartial(y)))
-                    MyBulbs.boi = None
+                    for device in device_list:
+                        host_info = await device.get_host_info()
+                        print(device.device_time_str(host_info))
+                    devices.selected = None
                 elif int(lov[0]) == 8:
                     if len(lov) > 3:
                         try:
-                            print("Sending {}".format([int(round((float(lov[1]) * 65535.0) / 360.0)),
-                                                       int(round((float(lov[2]) * 65535.0) / 100.0)),
-                                                       int(round((float(lov[3]) * 65535.0) / 100.0)), 3500]))
-                            MyBulbs.boi.set_waveform({"color": [int(round((float(lov[1]) * 65535.0) / 360.0)),
-                                                                int(round((float(lov[2]) * 65535.0) / 100.0)),
-                                                                int(round((float(lov[3]) * 65535.0) / 100.0)),
-                                                                3500],
-                                                      "transient": 1, "period": 100, "cycles": 30,
-                                                      "duty_cycle": 0, "waveform": 0})
-                            MyBulbs.boi = None
-                        except:
-                            print("Error: For pulse hue (0-360), saturation (0-100) and brightness (0-100)) must be numbers.\n")
+                            color = alix.Color(
+                                hue=int(lov[1]),
+                                saturation=int(lov[2]),
+                                brightness=int(lov[3]),
+                                kelvin=3500,
+                            )
+                            await selected_lights.set_waveform(
+                                color=color,
+                                transient=1,
+                                period=100,
+                                cycles=30,
+                                duty_cycle=0,
+                                waveform=0
+                            )
+                            devices.selected = None
+                        except (IndexError, ValueError):
+                            print("Error: For pulse hue (0-360), "
+                                  "saturation (0-100) and brightness (0-100) "
+                                  "must be numbers.\n")
                     else:
-                        print("Error: For pulse you must indicate hue (0-360), saturation (0-100) and brightness (0-100))\n")
-            # except:
-                #print ("\nError: Selection must be a number.\n")
+                        print("Error: For pulse you must indicate hue (0-360),"
+                              "saturation (0-100) and brightness (0-100))\n")
         else:
-            try:
-                if int(lov[0]) > 0:
-                    if int(lov[0]) <= len(MyBulbs.bulbs):
-                        MyBulbs.boi = MyBulbs.bulbs[int(lov[0]) - 1]
-                    else:
-                        print("\nError: Not a valid selection.\n")
 
-            except:
-                print("\nError: Selection must be a number.\n")
+            if lov[0] == 'group':
+                devices.selected = devices.get_by_group(lov[1])
+            elif lov[0] == 'label':
+                devices.selected = devices.get_by_label(lov[1])
+            else:
+                try:
 
-    if MyBulbs.boi:
-        print("Select Function for {}:".format(MyBulbs.boi.label))
+                    index = int(lov[0])
+                    if index > 0:
+                        if index <= len(device_list):
+                            devices.selected = devices.get_by_mac_addr(device_list[index-1].mac_addr)
+                        else:
+                            print("\nError: Not a valid selection.\n")
+
+                except (IndexError, ValueError):
+                    print("\nError: Selection must be a number.\n")
+
+    if devices.selected:
+        await devices.selected.get_meta_information()
+        print("Select Function for {}:".format(", ".join([str(d) for d in device_list])))
         print("\t[1]\tPower (0 or 1)")
-        print("\t[2]\tWhite (Brigthness Temperature)")
+        print("\t[2]\tWhite (Brightness Temperature)")
         print("\t[3]\tColour (Hue Saturation Value)")
         print("\t[4]\tInfo")
         print("\t[5]\tFirmware")
@@ -158,41 +187,42 @@ def readin():
         print("\t[7]\tUptime")
         print("\t[8]\tPulse")
         print("")
-        print("\t[0]\tBack to bulb selection")
+        print("\t[0]\tBack to light selection")
     else:
         idx = 1
         print("Select Bulb:")
-        for x in MyBulbs.bulbs:
-            print("\t[{}]\t{}".format(idx, x.label or x.mac_addr))
+        await devices.get_meta_information()
+        for x in device_list:
+            print("\t[{}]\t{}\t{}\t{}".format(idx, x.label, x.mac_addr, x.group))
             idx += 1
+        print("")
+        print("Alternatively type 'group <group>' or 'label <label>' to select a number of lights.")
+
     print("")
     print("Your choice: ", end='', flush=True)
 
 
-parser = argparse.ArgumentParser(description="Track and interact with Lifx light bulbs.")
-parser.add_argument("-6", "--ipv6prefix", default=None,
-                    help="Connect to Lifx using IPv6 with given /64 prefix (Do not end with colon unless you have less than 64bits).")
-parser.add_argument("-x", "--extra", action='store_true', default=False,
-                    help="Print unexpected messages.")
-try:
-    opts = parser.parse_args()
-except Exception as e:
-    parser.error("Error: " + str(e))
+def main() -> None:
+    """ Main CLI function. """
+    loop = aio.get_event_loop()
+    devices = MyDevices(loop=loop)
 
+    def read_in_wrapper() -> None:
+        read_in(loop=loop, devices=devices)
 
-MyBulbs = bulbs()
-loop = aio.get_event_loop()
-coro = loop.create_datagram_endpoint(
-    partial(alix.LifxDiscovery, loop, MyBulbs, ipv6prefix=opts.ipv6prefix), local_addr=('0.0.0.0', UDP_BROADCAST_PORT))
-try:
-    loop.add_reader(sys.stdin, readin)
-    server = loop.create_task(coro)
-    print("Hit \"Enter\" to start")
-    print("Use Ctrl-C to quit")
-    loop.run_forever()
-except:
-    pass
-finally:
-    server.cancel()
-    loop.remove_reader(sys.stdin)
-    loop.close()
+    coro = devices.get_discover_coro()
+    loop.add_reader(sys.stdin, read_in_wrapper)
+    server = loop.create_task(coro)  # type: aio.Task
+
+    try:
+        print("Hit \"Enter\" to start")
+        print("Use Ctrl-C to quit")
+        loop.run_forever()
+    except Exception as e:
+        print("Got exception %s" % e)
+    finally:
+        server.cancel()
+        loop.remove_reader(sys.stdin)
+        loop.close()
+
+main()

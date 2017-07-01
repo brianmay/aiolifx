@@ -2,9 +2,9 @@
 # Author: Meghan Clark
 
 import struct
+from typing import Dict, Any, Optional, Tuple, List
+
 import bitstring
-import binascii
-import sys
 
 BROADCAST_MAC = "00:00:00:00:00:00"
 BROADCAST_SOURCE_ID = 0
@@ -13,11 +13,14 @@ HEADER_SIZE_BYTES = 36
 
 
 class Message(object):
-    def __init__(self, msg_type, target_addr, source_id, seq_num, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int,
+            seq_num: int, ack_requested: bool=False, response_requested: bool=False,
+            payload: Dict[str, Any]) -> None:
 
         # Frame
         self.frame_format = ["uint:16", "uint:2, bool, bool, uint:12", "uint:32"]
-        self.size = None                                                # 16 bits/uint16
+        self.size = None  # type: Optional[int]                         # 16 bits/uint16
         self.origin = 0                                                 # 2 bits/uint8, must be zero
         self.tagged = 1 if target_addr == BROADCAST_MAC else 0          # 1 bit/bool, also must be one if getservice
         self.addressable = 1                                            # 1 bit/bool, must be one
@@ -38,22 +41,20 @@ class Message(object):
         # Protocol Header
         self.protocol_header_format = ["uint:64", "uint:16", "uint:16"]
         self.reserved = 0                                               # 64 bits/uint64, all zero
-        self.message_type = msg_type                                    # 16 bits/uint16
+        self.message_type = None  # type: Optional[int]                 # 16 bits/uint16
         self.reserved = 0                                               # 16 bits/uint16, all zero
 
-        self.payload_fields = []  # tuples of ("label", value)
+        self.payload_fields = []  # type: List[Tuple[str, Any]]
 
-        self.packed_message = self.generate_packed_message()
-
-    def generate_packed_message(self):
+    def generate_packed_message(self) -> bitstring.BitString:
         self.payload = self.get_payload()
         self.header = self.get_header()
         packed_message = self.header + self.payload
         return packed_message
 
     # frame (and thus header) needs to be generated after payload (for size field)
-    def get_header(self):
-        if self.size == None:
+    def get_header(self) -> bitstring.BitString:
+        if self.size is None:
             self.size = self.get_msg_size()
         frame_addr = self.get_frame_addr()
         frame = self.get_frame()
@@ -62,10 +63,10 @@ class Message(object):
         return header
 
     # Default: No payload unless method overridden
-    def get_payload(self):
+    def get_payload(self) -> bitstring.BitString:
         return little_endian(bitstring.pack(""))
 
-    def get_frame(self):
+    def get_frame(self) -> bitstring.BitString:
         size_format = self.frame_format[0]
         flags_format = self.frame_format[1]
         source_id_format = self.frame_format[2]
@@ -75,7 +76,7 @@ class Message(object):
         frame = size + flags + source_id
         return frame
 
-    def get_frame_addr(self):
+    def get_frame_addr(self) -> bitstring.BitString:
         mac_addr_format = self.frame_addr_format[0]
         reserved_48_format = self.frame_addr_format[1]
         response_flags_format = self.frame_addr_format[2]
@@ -88,7 +89,7 @@ class Message(object):
         frame_addr = mac_addr + reserved_48 + response_flags + seq_num
         return frame_addr
 
-    def get_protocol_header(self):
+    def get_protocol_header(self) -> bitstring.BitString:
         reserved_64_format = self.protocol_header_format[0]
         message_type_format = self.protocol_header_format[1]
         reserved_16_format = self.protocol_header_format[2]
@@ -98,11 +99,11 @@ class Message(object):
         protocol_header = reserved_64 + message_type + reserved_16
         return protocol_header
 
-    def get_msg_size(self):
-        payload_size_bytes = len(self.payload) / 8
+    def get_msg_size(self) -> int:
+        payload_size_bytes = int(len(self.payload) / 8)
         return HEADER_SIZE_BYTES + payload_size_bytes
 
-    def __str__(self):
+    def __str__(self) -> str:
         indent = "  "
         s = self.__class__.__name__ + "\n"
         s += indent + "Size: {}\n".format(self.size)
@@ -122,21 +123,22 @@ class Message(object):
             s += "\n" + indent * 2 + "<empty>"
         s += "\n"
         s += indent + "Bytes:\n"
-        s += indent * 2 + str([hex(b) for b in struct.unpack("B" * (len(self.packed_message)), self.packed_message)])
+        packed_message = self.generate_packed_message()
+        s += indent * 2 + str([hex(b) for b in struct.unpack("B" * (len(packed_message)), packed_message)])
         s += "\n"
         return s
 
 # reverses bytes for little endian, then converts to int
 
 
-def convert_MAC_to_int(addr):
+def convert_MAC_to_int(addr: str) -> int:
     reverse_bytes_str = addr.split(':')
     reverse_bytes_str.reverse()
     addr_str = "".join(reverse_bytes_str)
     return int(addr_str, 16)
 
 
-def little_endian(bs):
+def little_endian(bs: bitstring.BitString) -> bytes:
     shifts = [i * 8 for i in range(int(len(bs) / 8))]
     int_bytes_little_endian = [int(bs.uintbe >> i & 0xff) for i in shifts]
     packed_message_little_endian = b""

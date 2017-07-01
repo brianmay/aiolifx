@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use Robotica in a project::
+To use AioLifxC in a project::
 
     import aiolifxc

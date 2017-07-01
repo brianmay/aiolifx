@@ -1,5 +1,5 @@
 ========
-aiolifxc
+AioLifxC
 ========
 
 .. image:: https://img.shields.io/pypi/v/aiolifxc.svg
@@ -16,7 +16,7 @@ aiolifxc
      :target: https://pyup.io/repos/github/brianmay/aiolifxc/
      :alt: Updates
 
-aiolifxc is a Python 3/asyncio library to control Lifx LED lightbulbs over your LAN.
+AioLifxC is a Python 3/asyncio library to control Lifx LED lightbulbs over your LAN.
 
 Most of it was originally taken from the
 `Meghan Clarkk lifxlan package <https://github.com/mclarkk/lifxlan>`_
@@ -35,11 +35,11 @@ Installation
 
 We are on PyPi so::
 
-     pip3 install aiolifx
+     pip3 install aiolifxc
 
 or::
 
-     python3 -m pip install aiolifx
+     python3 -m pip install aiolifxc
 
 NOTE: When installing with Python 3.4, the installation produce an error message
       (syntax error). This can be safely ignored. 
@@ -48,40 +48,7 @@ NOTE: When installing with Python 3.4, the installation produce an error message
 How to use
 ----------
 
-Essentially, you create an object with at least 2 methods:
-
-    - register
-    - unregister
-
-You then start the LifxDiscovery task in asyncio. It will register any new light it finds.
-All the method communicating with the bulb can be passed a callback function to react to 
-the bulb response. The callback should take 2 parameters:
-
-    - a light object
-    - the response message
-
-
-The easiest way is to look at the file in the examples directory. "Wifi" and "Uptime" use
-a callback to print the info when it is returned.
-
 In essence, the test program is this::
-
-    class bulbs():
-    """ A simple class with a register and  unregister methods
-    """
-        def __init__(self):
-            self.bulbs=[]
-
-        def register(self,bulb):
-            self.bulbs.append(bulb)
-
-        def unregister(self,bulb):
-            idx=0
-            for x in list([ y.mac_addr for y in self.bulbs]):
-                if x == bulb.mac_addr:
-                    del(self.bulbs[idx])
-                    break
-                idx+=1
 
     def readin():
     """Reading from stdin and displaying menu"""
@@ -89,16 +56,18 @@ In essence, the test program is this::
         selection = sys.stdin.readline().strip("\n")
         DoSomething()
 
-    MyBulbs= bulbs()
     loop = aio.get_event_loop()
-    coro = loop.create_datagram_endpoint(
-                partial(alix.LifxDiscovery,loop, MyBulbs), local_addr=('0.0.0.0', UDP_BROADCAST_PORT))
+    devices = Devices(loop=loop)
+
+    loop.add_reader(sys.stdin, readin)
+
+    coro = devices.get_discover_coro()
+    server = loop.create_task(coro)
+
     try:
-        loop.add_reader(sys.stdin,readin)
-        server = loop.create_task(coro)
         loop.run_forever()
-    except:
-        pass
+    except Exception as e:
+        print("Got exception %s" % e)
     finally:
         server.cancel()
         loop.remove_reader(sys.stdin)

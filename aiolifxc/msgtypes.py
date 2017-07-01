@@ -2,33 +2,54 @@
 # Author: Meghan Clark
 #    Edited for python3 by François Wautier
 
-# To Do: Validate that args are within required ranges, types, etc. In particular: Color [0-65535, 0-65535, 0-65535, 2500-9000], Power Level (must be 0 OR 65535)
+# To Do: Validate that args are within required ranges, types, etc. In
+# particular: Color [0-65535, 0-65535, 0-65535, 2500-9000], Power Level (must be 0 OR 65535)
 # Need to look into assert-type frameworks or something, there has to be a tool for that.
 # Also need to make custom errors possibly, though tool may have those.
+from typing import Dict, Any
 
-from .message import Message, BROADCAST_MAC, HEADER_SIZE_BYTES, little_endian
+from .message import Message, little_endian
 import bitstring
-import sys
-import struct
 
 ##### DEVICE MESSAGES #####
 
 
 class GetService(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        target_addr = BROADCAST_MAC
-        super(GetService, self).__init__(MSG_IDS[GetService], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetService]
 
 
 class StateService(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.service = payload["service"]
         self.port = payload["port"]
-        super(StateService, self).__init__(MSG_IDS[StateService], target_addr,
-                                           source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateService]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Service", self.service))
         self.payload_fields.append(("Port", self.port))
         service = little_endian(bitstring.pack("uint:8", self.service))
@@ -38,21 +59,43 @@ class StateService(Message):
 
 
 class GetHostInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetHostInfo, self).__init__(MSG_IDS[GetHostInfo], target_addr,
-                                          source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetHostInfo]
 
 
 class StateHostInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.signal = payload["signal"]
         self.tx = payload["tx"]
         self.rx = payload["rx"]
         self.reserved1 = payload["reserved1"]
-        super(StateHostInfo, self).__init__(MSG_IDS[StateHostInfo],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateHostInfo]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Signal (mW)", self.signal))
         self.payload_fields.append(("TX (bytes since on)", self.tx))
         self.payload_fields.append(("RX (bytes since on)", self.rx))
@@ -66,20 +109,42 @@ class StateHostInfo(Message):
 
 
 class GetHostFirmware(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetHostFirmware, self).__init__(MSG_IDS[GetHostFirmware],
-                                              target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetHostFirmware]
 
 
 class StateHostFirmware(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.build = payload["build"]
         self.reserved1 = payload["reserved1"]
         self.version = payload["version"]
-        super(StateHostFirmware, self).__init__(MSG_IDS[StateHostFirmware],
-                                                target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateHostFirmware]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Timestamp of Build", self.build))
         self.payload_fields.append(("Reserved", self.reserved1))
         self.payload_fields.append(("Version", self.version))
@@ -91,21 +156,43 @@ class StateHostFirmware(Message):
 
 
 class GetWifiInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetWifiInfo, self).__init__(MSG_IDS[GetWifiInfo], target_addr,
-                                          source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetWifiInfo]
 
 
 class StateWifiInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.signal = payload["signal"]
         self.tx = payload["tx"]
         self.rx = payload["rx"]
         self.reserved1 = payload["reserved1"]
-        super(StateWifiInfo, self).__init__(MSG_IDS[StateWifiInfo],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateWifiInfo]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Signal (mW)", self.signal))
         self.payload_fields.append(("TX (bytes since on)", self.tx))
         self.payload_fields.append(("RX (bytes since on)", self.rx))
@@ -119,20 +206,42 @@ class StateWifiInfo(Message):
 
 
 class GetWifiFirmware(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetWifiFirmware, self).__init__(MSG_IDS[GetWifiFirmware],
-                                              target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetWifiFirmware]
 
 
 class StateWifiFirmware(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.build = payload["build"]
         self.reserved1 = payload["reserved1"]
         self.version = payload["version"]
-        super(StateWifiFirmware, self).__init__(MSG_IDS[StateWifiFirmware],
-                                                target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateWifiFirmware]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Timestamp of Build", self.build))
         self.payload_fields.append(("Reserved", self.reserved1))
         self.payload_fields.append(("Version", self.version))
@@ -144,18 +253,40 @@ class StateWifiFirmware(Message):
 
 
 class GetPower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetPower, self).__init__(MSG_IDS[GetPower], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetPower]
 
 
 class SetPower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.power_level = payload["power_level"]
-        super(SetPower, self).__init__(MSG_IDS[SetPower], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.power_level = payload["power_level"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[SetPower]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Power", self.power_level))
         power_level = little_endian(bitstring.pack("uint:16", self.power_level))
         payload = power_level
@@ -163,12 +294,23 @@ class SetPower(Message):
 
 
 class StatePower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.power_level = payload["power_level"]
-        super(StatePower, self).__init__(MSG_IDS[StatePower], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.power_level = payload["power_level"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StatePower]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Power", self.power_level))
         power_level = little_endian(bitstring.pack("uint:16", self.power_level))
         payload = power_level
@@ -176,18 +318,40 @@ class StatePower(Message):
 
 
 class GetLabel(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetLabel, self).__init__(MSG_IDS[GetLabel], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetLabel]
 
 
 class SetLabel(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.label = payload["label"]
-        super(SetLabel, self).__init__(MSG_IDS[SetLabel], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.label = payload["label"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[SetLabel]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Label", self.label))
         field_len_bytes = 32
         label = b"".join(little_endian(bitstring.pack("uint:8", ord(c))) for c in self.label)
@@ -197,12 +361,23 @@ class SetLabel(Message):
 
 
 class StateLabel(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.label = payload["label"]
-        super(StateLabel, self).__init__(MSG_IDS[StateLabel], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.label = payload["label"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateLabel]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Label", self.label))
         field_len_bytes = 32
         label = b"".join(little_endian(bitstring.pack("uint:8", c)) for c in self.label)
@@ -212,20 +387,42 @@ class StateLabel(Message):
 
 
 class GetVersion(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetVersion, self).__init__(MSG_IDS[GetVersion], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetVersion]
 
 
 class StateVersion(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.vendor = payload["vendor"]
         self.product = payload["product"]
         self.version = payload["version"]
-        super(StateVersion, self).__init__(MSG_IDS[StateVersion], target_addr,
-                                           source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateVersion]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Vendor", self.vendor))
         self.payload_fields.append(("Reserved", self.product))
         self.payload_fields.append(("Version", self.version))
@@ -237,20 +434,42 @@ class StateVersion(Message):
 
 
 class GetInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetInfo, self).__init__(MSG_IDS[GetInfo], target_addr,
-                                      source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetInfo]
 
 
 class StateInfo(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.time = payload["time"]
         self.uptime = payload["uptime"]
         self.downtime = payload["downtime"]
-        super(StateInfo, self).__init__(MSG_IDS[StateInfo], target_addr,
-                                        source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateInfo]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Current Time", self.time))
         self.payload_fields.append(("Uptime (ns)", self.uptime))
         self.payload_fields.append(("Last Downtime Duration (ns) (5 second error)", self.downtime))
@@ -262,20 +481,42 @@ class StateInfo(Message):
 
 
 class GetLocation(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetLocation, self).__init__(MSG_IDS[GetLocation], target_addr,
-                                          source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetLocation]
 
 
 class StateLocation(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.location = payload["location"]
         self.label = payload["label"]
         self.updated_at = payload["updated_at"]
-        super(StateLocation, self).__init__(MSG_IDS[StateLocation],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateLocation]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Location ", self.location))
         self.payload_fields.append(("Label ", self.label))
         self.payload_fields.append(("Updated At ", self.updated_at))
@@ -289,20 +530,42 @@ class StateLocation(Message):
 
 
 class GetGroup(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(GetGroup, self).__init__(MSG_IDS[GetGroup], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[GetGroup]
 
 
 class StateGroup(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.group = payload["group"]
         self.label = payload["label"]
         self.updated_at = payload["updated_at"]
-        super(StateGroup, self).__init__(MSG_IDS[StateGroup], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[StateGroup]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Group ", self.group))
         self.payload_fields.append(("Label ", self.label))
         self.payload_fields.append(("Updated At ", self.updated_at))
@@ -316,18 +579,40 @@ class StateGroup(Message):
 
 
 class Acknowledgement(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(Acknowledgement, self).__init__(MSG_IDS[Acknowledgement],
-                                              target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[Acknowledgement]
 
 
 class EchoRequest(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.byte_array = payload["byte_array"]
-        super(EchoRequest, self).__init__(MSG_IDS[EchoRequest], target_addr,
-                                          source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.byte_array = payload["byte_array"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[EchoRequest]
+
+    def get_payload(self) -> bytes:
         field_len = 64
         self.payload_fields.append(("Byte Array", self.byte_array))
         byte_array = b"".join(little_endian(bitstring.pack("uint:8", b)) for b in self.byte_array)
@@ -342,12 +627,23 @@ class EchoRequest(Message):
 
 
 class EchoResponse(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.byte_array = payload["byte_array"]
-        super(EchoResponse, self).__init__(MSG_IDS[EchoResponse], target_addr,
-                                           source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.byte_array = payload["byte_array"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[EchoResponse]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Byte Array", self.byte_array))
         byte_array = b"".join(little_endian(bitstring.pack("uint:8", b)) for b in self.byte_array)
         payload = byte_array
@@ -358,19 +654,41 @@ class EchoResponse(Message):
 
 
 class LightGet(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(LightGet, self).__init__(MSG_IDS[LightGet], target_addr,
-                                       source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightGet]
 
 
 class LightSetColor(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.color = payload["color"]
         self.duration = payload["duration"]
-        super(LightSetColor, self).__init__(MSG_IDS[LightSetColor],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightSetColor]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         reserved_8 = little_endian(bitstring.pack("uint:8", self.reserved))
         color = b"".join(little_endian(bitstring.pack("uint:16", field)) for field in self.color)
         duration = little_endian(bitstring.pack("uint:32", self.duration))
@@ -380,17 +698,28 @@ class LightSetColor(Message):
 
 
 class LightSetWaveform(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.transient = payload["transient"]
         self.color = payload["color"]
         self.period = payload["period"]
         self.cycles = payload["cycles"]
         self.duty_cycle = payload["duty_cycle"]
         self.waveform = payload["waveform"]
-        super(LightSetWaveform, self).__init__(MSG_IDS[LightSetWaveform],
-                                               target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightSetWaveform]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         reserved_8 = little_endian(bitstring.pack("uint:8", self.reserved))
         transient = little_endian(bitstring.pack("uint:8", self.transient))
         color = b"".join(little_endian(bitstring.pack("uint:16", field)) for field in self.color)
@@ -405,16 +734,27 @@ class LightSetWaveform(Message):
 
 
 class LightState(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.color = payload["color"]
         self.reserved1 = payload["reserved1"]
         self.power_level = payload["power_level"]
         self.label = payload["label"]
         self.reserved2 = payload["reserved2"]
-        super(LightState, self).__init__(MSG_IDS[LightState], target_addr,
-                                         source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightState]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Color (HSBK)", self.color))
         self.payload_fields.append(("Reserved", self.reserved1))
         self.payload_fields.append(("Power Level", self.power_level))
@@ -432,19 +772,41 @@ class LightState(Message):
 
 
 class LightGetPower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(LightGetPower, self).__init__(MSG_IDS[LightGetPower],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightGetPower]
 
 
 class LightSetPower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.power_level = payload["power_level"]
         self.duration = payload["duration"]
-        super(LightSetPower, self).__init__(MSG_IDS[LightSetPower],
-                                            target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightSetPower]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         power_level = little_endian(bitstring.pack("uint:16", self.power_level))
         duration = little_endian(bitstring.pack("uint:32", self.duration))
         payload = power_level + duration
@@ -452,12 +814,23 @@ class LightSetPower(Message):
 
 
 class LightStatePower(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.power_level = payload["power_level"]
-        super(LightStatePower, self).__init__(MSG_IDS[LightStatePower],
-                                              target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.power_level = payload["power_level"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightStatePower]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Power Level", self.power_level))
         power_level = little_endian(bitstring.pack("uint:16", self.power_level))
         payload = power_level
@@ -467,18 +840,40 @@ class LightStatePower(Message):
 
 
 class LightGetInfrared(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload={}, ack_requested=False, response_requested=False):
-        super(LightGetInfrared, self).__init__(MSG_IDS[LightGetInfrared],
-                                               target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightGetInfrared]
 
 
 class LightStateInfrared(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.infrared_brightness = payload["infrared_brightness"]
-        super(LightStateInfrared, self).__init__(MSG_IDS[LightStateInfrared],
-                                                 target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.infrared_brightness = payload["infrared_brightness"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightStateInfrared]
+
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Infrared Brightness", self.infrared_brightness))
         infrared_brightness = little_endian(bitstring.pack("uint:16", self.infrared_brightness))
         payload = infrared_brightness
@@ -486,12 +881,23 @@ class LightStateInfrared(Message):
 
 
 class LightSetInfrared(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
-        self.infrared_brightness = payload["infrared_brightness"]
-        super(LightSetInfrared, self).__init__(MSG_IDS[LightSetInfrared],
-                                               target_addr, source_id, seq_num, ack_requested, response_requested)
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
 
-    def get_payload(self):
+        if payload is None:
+            payload = {}
+
+        self.infrared_brightness = payload["infrared_brightness"]
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[LightSetInfrared]
+
+    def get_payload(self) -> bytes:
         infrared_brightness = little_endian(bitstring.pack("uint:16", self.infrared_brightness))
         payload = infrared_brightness
         return payload
@@ -500,14 +906,25 @@ class LightSetInfrared(Message):
 
 
 class MultiZoneStateMultiZone(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.count = payload["count"]
         self.index = payload["index"]
         self.color = payload["color"]
-        super(MultiZoneStateMultiZone, self).__init__(MSG_IDS[MultiZoneStateMultiZone], target_addr, source_id, seq_num,
-                                                      ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[MultiZoneStateMultiZone]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Count", self.count))
         self.payload_fields.append(("Index", self.index))
         self.payload_fields.append(("Color (HSBK)", self.color))
@@ -520,14 +937,25 @@ class MultiZoneStateMultiZone(Message):
 
 
 class MultiZoneStateZone(Message):  # 503
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.count = payload["count"]
         self.index = payload["index"]
         self.color = payload["color"]
-        super(MultiZoneStateZone, self).__init__(MSG_IDS[MultiZoneStateZone], target_addr, source_id, seq_num, ack_requested,
-                                                 response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[MultiZoneStateZone]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         self.payload_fields.append(("Count", self.count))
         self.payload_fields.append(("Index", self.index))
         self.payload_fields.append(("Color (HSBK)", self.color))
@@ -539,16 +967,27 @@ class MultiZoneStateZone(Message):  # 503
 
 
 class MultiZoneSetColorZones(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.start_index = payload["start_index"]
         self.end_index = payload["end_index"]
         self.color = payload["color"]
         self.duration = payload["duration"]
         self.apply = payload["apply"]
-        super(MultiZoneSetColorZones, self).__init__(
-            MSG_IDS[MultiZoneSetColorZones], target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[MultiZoneSetColorZones]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         start_index = little_endian(bitstring.pack("uint:8", self.start_index))
         end_index = little_endian(bitstring.pack("uint:8", self.end_index))
         color = b"".join(little_endian(bitstring.pack("uint:16", field)) for field in self.color)
@@ -559,13 +998,24 @@ class MultiZoneSetColorZones(Message):
 
 
 class MultiZoneGetColorZones(Message):
-    def __init__(self, target_addr, source_id, seq_num, payload, ack_requested=False, response_requested=False):
+    def __init__(
+            self, *, target_addr: str, source_id: int, seq_num: int,
+            payload: Dict[str, Any]=None,
+            ack_requested: bool=False, response_requested: bool=False) -> None:
+
+        if payload is None:
+            payload = {}
+
         self.start_index = payload["start_index"]
         self.end_index = payload["end_index"]
-        super(MultiZoneGetColorZones, self).__init__(
-            MSG_IDS[MultiZoneGetColorZones], target_addr, source_id, seq_num, ack_requested, response_requested)
+        super().__init__(
+            target_addr=target_addr, source_id=source_id,
+            seq_num=seq_num,
+            ack_requested=ack_requested, response_requested=response_requested,
+            payload=payload)
+        self.message_type = MSG_IDS[MultiZoneGetColorZones]
 
-    def get_payload(self):
+    def get_payload(self) -> bytes:
         start_index = little_endian(bitstring.pack("uint:8", self.start_index))
         end_index = little_endian(bitstring.pack("uint:8", self.end_index))
         payload = start_index + end_index
@@ -626,15 +1076,3 @@ STR_MAP = {65535: "On",
 ZONE_MAP = {0: "NO_APPLY",
             1: "APPLY",
             2: "APPLY_ONLY"}
-
-
-def str_map(key):
-    string_representation = "Unknown"
-    if key == None:
-        string_representation = "Unknown"
-    elif type(key) == type(0):
-        if key > 0 and key <= 65535:
-            string_representation = "On"
-        elif key == 0:
-            string_representation = "Off"
-    return string_representation

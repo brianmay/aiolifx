@@ -1,4 +1,4 @@
-Welcome to Robotica's documentation!
+Welcome to AioLifxC's documentation!
 ======================================
 
 Contents:
