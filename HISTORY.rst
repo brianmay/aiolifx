@@ -2,6 +2,13 @@
 History
 =======
 
+0.5.2 (UNRELEASED)
+------------------
+
+Changed
+~~~~~~~
+* Significant changes. Improvements to the API. Type hints, doc strings, etc.
+
 0.5.1 (2017-06-26)
 ------------------
 
