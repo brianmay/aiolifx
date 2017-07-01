@@ -29,14 +29,13 @@ import random
 import socket
 from typing import (
     List, Dict, Type, Optional, Union, Tuple, Callable, TypeVar,
-    Set, Coroutine, Any, Generator,
-    AnyStr, cast
-)
+    Any, AnyStr, cast)
+from typing import Set  # NOQA
 
 from .colors import Color
-from .message import BROADCAST_MAC
-from .msgtypes import *
-from .products import *
+from .message import Message, BROADCAST_MAC
+from . import msgtypes
+from .products import product_map
 from .unpack import unpack_lifx_message
 
 # A couple of constants
@@ -298,7 +297,7 @@ class Devices:
         coroutines = []
         for device in self.get_list(device_class):
             coroutines.append(wrapper(device))
-        exceptions = await aio.gather(*coroutines, loop=self._loop)
+        await aio.gather(*coroutines, loop=self._loop)
 
     async def get_meta_information(self) -> None:
         """ Get all meta information for device. """
@@ -313,6 +312,7 @@ class Devices:
 
     def __str__(self) -> str:
         return format(", ".join([str(d) for d in self.device_list]))
+
 
 class Lights(Devices):
     """ Class that represents a number of Lights. """
@@ -575,7 +575,7 @@ class Device(aio.DatagramProtocol):
 
     async def _req_with_ack(
             self, msg_type: Type[Message], payload: Dict[str, Any],
-            *, timeout_secs: int=None, max_attempts: int=None) -> Acknowledgement:
+            *, timeout_secs: int=None, max_attempts: int=None) -> msgtypes.Acknowledgement:
         """
         Send a message and expect an ACK response.
 
@@ -592,7 +592,8 @@ class Device(aio.DatagramProtocol):
             seq_num=self._seq_next(),
             payload=payload, ack_requested=True, response_requested=False)
         return await self._try_sending(
-            msg, Acknowledgement, timeout_secs=timeout_secs, max_attempts=max_attempts)
+            msg, msgtypes.Acknowledgement,
+            timeout_secs=timeout_secs, max_attempts=max_attempts)
 
     # Usually used for Get messages, or for state confirmation after Set (hence the optional payload)
     async def _req_with_resp(
@@ -655,7 +656,8 @@ class Device(aio.DatagramProtocol):
         """
         label = self._label  # type: Optional[str]
         if label is None:
-            resp = await self._req_with_resp(GetLabel, StateLabel)  # type: StateLabel
+            resp = await self._req_with_resp(
+                msgtypes.GetLabel, msgtypes.StateLabel)  # type: msgtypes.StateLabel
             self._label = resp.label.decode().replace("\x00", "")
         assert self._label is not None
         return self._label
@@ -668,7 +670,7 @@ class Device(aio.DatagramProtocol):
         """
         if len(value) > 32:
             value = value[:32]
-        await self._req_with_ack(SetLabel, {"label": value})
+        await self._req_with_ack(msgtypes.SetLabel, {"label": value})
         self._label = value
 
     async def get_location(self) -> str:
@@ -680,7 +682,9 @@ class Device(aio.DatagramProtocol):
 
         location = self._location  # type: Optional[str]
         if location is None:
-            resp = await self._req_with_resp(GetLocation, StateLocation)  # type: StateLocation
+            resp = await self._req_with_resp(
+                msgtypes.GetLocation,
+                msgtypes.StateLocation)  # type: msgtypes.StateLocation
             self._location = resp.label.decode().replace("\x00", "")
         assert self._location is not None
         return self._location
@@ -698,7 +702,8 @@ class Device(aio.DatagramProtocol):
         """
         group = self._group  # type: Optional[str]
         if group is None:
-            resp = await self._req_with_resp(GetGroup, StateGroup)  # type: StateGroup
+            resp = await self._req_with_resp(
+                msgtypes.GetGroup, msgtypes.StateGroup)  # type: msgtypes.StateGroup
             self._group = resp.label.decode().replace("\x00", "")
         assert self._group is not None
         return self._group
@@ -718,7 +723,8 @@ class Device(aio.DatagramProtocol):
             0: False,
             65535: True,
         }
-        resp = await self._req_with_resp(GetPower, StatePower)  # type: StatePower
+        resp = await self._req_with_resp(
+            msgtypes.GetPower, msgtypes.StatePower)  # type: msgtypes.StatePower
         self._power_level = table.get(resp.power_level, resp.power_level)
         assert self._power_level is not None
         return self._power_level
@@ -739,9 +745,9 @@ class Device(aio.DatagramProtocol):
             value = 0
 
         if not rapid:
-            await self._req_with_ack(SetPower, {"power_level": value})
+            await self._req_with_ack(msgtypes.SetPower, {"power_level": value})
         else:
-            self._fire_and_forget(SetPower, {"power_level": value})
+            self._fire_and_forget(msgtypes.SetPower, {"power_level": value})
         self._power_level = value
 
     async def get_wifi_firmware(self) -> Tuple[str, int]:
@@ -752,7 +758,9 @@ class Device(aio.DatagramProtocol):
         """
         wifi_firmware_version = self._wifi_firmware_version  # type: Optional[str]
         if wifi_firmware_version is None:
-            resp = await self._req_with_resp(GetWifiFirmware, StateWifiFirmware)
+            resp = await self._req_with_resp(
+                msgtypes.GetWifiFirmware,
+                msgtypes.StateWifiFirmware)  # type: msgtypes.StateWifiFirmware
             self._wifi_firmware_version = (
                 str(str(resp.version >> 16) + "." + str(resp.version & 0xff))
             )
@@ -761,13 +769,14 @@ class Device(aio.DatagramProtocol):
         assert self._wifi_firmware_build_timestamp is not None
         return self._wifi_firmware_version, self._wifi_firmware_build_timestamp
 
-    async def get_wifi_info(self) -> StateWifiInfo:
+    async def get_wifi_info(self) -> msgtypes.StateWifiInfo:
         """
         Get the WIFI information.
 
         :return:The WIFI information.
         """
-        return await self._req_with_resp(GetWifiInfo, StateWifiInfo)
+        return await self._req_with_resp(
+            msgtypes.GetWifiInfo, msgtypes.StateWifiInfo)
 
     async def get_host_firmware(self) -> Tuple[str, int]:
         """
@@ -777,7 +786,9 @@ class Device(aio.DatagramProtocol):
         """
         host_firmware_version = self._host_firmware_version  # type: Optional[str]
         if host_firmware_version is None:
-            resp = await self._req_with_resp(GetHostFirmware, StateHostFirmware)
+            resp = await self._req_with_resp(
+                msgtypes.GetHostFirmware,
+                msgtypes.StateHostFirmware)  # type: msgtypes.StateHostFirmware
             self._host_firmware_version = (
                 str(str(resp.version >> 16) + "." + str(resp.version & 0xff))
             )
@@ -786,13 +797,13 @@ class Device(aio.DatagramProtocol):
         assert self._host_firmware_build_timestamp is not None
         return self._host_firmware_version, self._host_firmware_build_timestamp
 
-    async def get_host_info(self) -> StateInfo:
+    async def get_host_info(self) -> msgtypes.StateInfo:
         """
         Get the host information.
 
         :return: The host information.
         """
-        return await self._req_with_resp(GetInfo, StateInfo)
+        return await self._req_with_resp(msgtypes.GetInfo, msgtypes.StateInfo)
 
     async def get_version(self) -> Tuple[int, int, int]:
         """
@@ -802,7 +813,9 @@ class Device(aio.DatagramProtocol):
         """
         vendor = self._vendor  # type: Optional[int]
         if vendor is None:
-            resp = await self._req_with_resp(GetVersion, StateVersion)
+            resp = await self._req_with_resp(
+                msgtypes.GetVersion,
+                msgtypes.StateVersion)  # type: msgtypes.StateVersion
             self._vendor = resp.vendor
             self._product = resp.product
             self._version = resp.version
@@ -896,7 +909,7 @@ class Device(aio.DatagramProtocol):
         return s
 
     @staticmethod
-    def device_time_str(resp: StateInfo, indent: str="  ") -> str:
+    def device_time_str(resp: msgtypes.StateInfo, indent: str="  ") -> str:
         """
         Get a multi-line string for the device information.
 
@@ -930,7 +943,7 @@ class Device(aio.DatagramProtocol):
         return s
 
     @staticmethod
-    def device_radio_str(resp: StateWifiInfo, indent: str="  ") -> str:
+    def device_radio_str(resp: msgtypes.StateWifiInfo, indent: str="  ") -> str:
         """
         Get a multi-line string for the wifi information.
 
@@ -997,7 +1010,9 @@ class Light(Device):
             0: False,
             65535: True,
         }
-        resp = await self._req_with_resp(LightGetPower, LightStatePower)  # type: LightStatePower
+        resp = await self._req_with_resp(
+            msgtypes.LightGetPower,
+            msgtypes.LightStatePower)  # type: msgtypes.LightStatePower
         self._power_level = table.get(resp.power_level, resp.power_level)
         assert self._power_level is not None
         return self._power_level
@@ -1019,9 +1034,12 @@ class Light(Device):
             value = 0
 
         if not rapid:
-            await self._req_with_ack(LightSetPower, {"power_level": value, "duration": duration})
+            await self._req_with_ack(
+                msgtypes.LightSetPower, {"power_level": value, "duration": duration})
         else:
-            self._fire_and_forget(LightSetPower, {"power_level": value, "duration": duration}, num_repeats=1)
+            self._fire_and_forget(
+                msgtypes.LightSetPower, {"power_level": value, "duration": duration},
+                num_repeats=1)
         self._power_level = value
 
     async def get_color(self) -> Color:
@@ -1030,7 +1048,8 @@ class Light(Device):
 
         :return: The color of the light.
         """
-        resp = await self._req_with_resp(LightGet, LightState)  # type: LightState
+        resp = await self._req_with_resp(
+            msgtypes.LightGet, msgtypes.LightState)  # type: msgtypes.LightState
 
         table = {
             0: False,
@@ -1053,9 +1072,14 @@ class Light(Device):
         """
         value = color.get_values()
         if rapid:
-            self._fire_and_forget(LightSetColor, {"color": value, "duration": duration}, num_repeats=1)
+            self._fire_and_forget(
+                msgtypes.LightSetColor,
+                {"color": value, "duration": duration},
+                num_repeats=1)
         else:
-            await self._req_with_ack(LightSetColor, {"color": value, "duration": duration})
+            await self._req_with_ack(
+                msgtypes.LightSetColor,
+                {"color": value, "duration": duration})
         self._color = color
 
     async def get_color_zones(self, start_index: int, end_index: int=None) -> List[Color]:
@@ -1072,8 +1096,9 @@ class Light(Device):
             "end_index": end_index,
         }
         resp = await self._req_with_resp(
-            MultiZoneGetColorZones,
-            MultiZoneStateMultiZone, payload=args)  # type: MultiZoneStateMultiZone
+            msgtypes.MultiZoneGetColorZones,
+            msgtypes.MultiZoneStateMultiZone,
+            payload=args)  # type: msgtypes.MultiZoneStateMultiZone
 
         self._color_zones = []
         for HSBK in resp.color:   # type: Tuple[int, int, int, int]
@@ -1103,9 +1128,11 @@ class Light(Device):
         }
 
         if rapid:
-            self._fire_and_forget(MultiZoneSetColorZones, args, num_repeats=1)
+            self._fire_and_forget(
+                msgtypes.MultiZoneSetColorZones, args, num_repeats=1)
         else:
-            await self._req_with_ack(MultiZoneSetColorZones, args)
+            await self._req_with_ack(
+                msgtypes.MultiZoneSetColorZones, args)
 
     async def set_waveform(
             self, *,
@@ -1133,16 +1160,20 @@ class Light(Device):
         }
 
         if rapid:
-            self._fire_and_forget(LightSetWaveform, value, num_repeats=1)
+            self._fire_and_forget(
+                msgtypes.LightSetWaveform, value, num_repeats=1)
         else:
-            await self._req_with_ack(LightSetWaveform, value)
+            await self._req_with_ack(
+                msgtypes.LightSetWaveform, value)
 
     async def get_infrared(self) -> int:
         """
         Get infra-red brightness.
         :return: Number 0-100.
         """
-        resp = await self._req_with_resp(LightGetInfrared, LightStateInfrared)  # type: LightStateInfrared
+        resp = await self._req_with_resp(
+            msgtypes.LightGetInfrared,
+            msgtypes.LightStateInfrared)  # type: msgtypes.LightStateInfrared
         self._infrared_brightness = int(resp.infrared_brightness * 100 / 65535)
         return self._infrared_brightness
 
@@ -1156,10 +1187,10 @@ class Light(Device):
         value = int(infrared_brightness * 65535 / 100)
         if rapid:
             self._fire_and_forget(
-                LightSetInfrared, {"infrared_brightness": value}, num_repeats=1)
+                msgtypes.LightSetInfrared, {"infrared_brightness": value}, num_repeats=1)
         else:
             await self._req_with_ack(
-                LightSetInfrared, {"infrared_brightness": value})
+                msgtypes.LightSetInfrared, {"infrared_brightness": value})
         self._infrared_brightness = value
 
 
@@ -1210,14 +1241,14 @@ class LifxDiscovery(aio.DatagramProtocol):
         if mac_addr == BROADCAST_MAC:
             return
 
-        if type(response) == StateService:
+        if type(response) == msgtypes.StateService:
             # discovered
-            assert isinstance(response, StateService)
+            assert isinstance(response, msgtypes.StateService)
             if response.service == 1:  # only look for UDP services
                 remote_port = response.port
             else:
                 return
-        elif type(response) == LightState:
+        elif type(response) == msgtypes.LightState:
             # looks like the lights are volunteering LightState after booting
             remote_port = UDP_BROADCAST_PORT
         else:
@@ -1257,7 +1288,7 @@ class LifxDiscovery(aio.DatagramProtocol):
 
             if self._discovery_countdown <= 0:
                 self._discovery_countdown = self._discovery_interval
-                msg = GetService(
+                msg = msgtypes.GetService(
                     target_addr=BROADCAST_MAC, source_id=self._source_id,
                     seq_num=0, payload={},
                     ack_requested=False, response_requested=True)

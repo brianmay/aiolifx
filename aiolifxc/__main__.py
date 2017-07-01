@@ -23,7 +23,7 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 import sys
 import asyncio as aio
-from typing import List, Optional
+from typing import List, Optional  # noqa
 
 import aiolifxc as alix
 
@@ -224,5 +224,6 @@ def main() -> None:
         server.cancel()
         loop.remove_reader(sys.stdin)
         loop.close()
+
 
 main()

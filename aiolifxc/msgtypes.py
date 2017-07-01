@@ -11,7 +11,7 @@ from typing import Dict, Any
 from .message import Message, little_endian
 import bitstring
 
-##### DEVICE MESSAGES #####
+# DEVICE MESSAGES
 
 
 class GetService(Message):
@@ -650,7 +650,7 @@ class EchoResponse(Message):
         return payload
 
 
-##### LIGHT MESSAGES #####
+# LIGHT MESSAGES
 
 
 class LightGet(Message):
@@ -693,7 +693,7 @@ class LightSetColor(Message):
         color = b"".join(little_endian(bitstring.pack("uint:16", field)) for field in self.color)
         duration = little_endian(bitstring.pack("uint:32", self.duration))
         payload = reserved_8 + color + duration
-        payloadUi = " ".join("{:02x}".format(c) for c in payload)
+        # payloadUi = " ".join("{:02x}".format(c) for c in payload)
         return payload
 
 
@@ -728,8 +728,7 @@ class LightSetWaveform(Message):
         duty_cycle = little_endian(bitstring.pack("int:16", self.duty_cycle))
         waveform = little_endian(bitstring.pack("uint:8", self.waveform))
         payload = reserved_8 + transient + color + period + cycles + duty_cycle + waveform
-
-        payloadUi = " ".join("{:02x}".format(c) for c in payload)
+        # payloadUi = " ".join("{:02x}".format(c) for c in payload)
         return payload
 
 
@@ -836,7 +835,7 @@ class LightStatePower(Message):
         payload = power_level
         return payload
 
-##### INFRARED MESSAGES #####
+# INFRARED MESSAGES
 
 
 class LightGetInfrared(Message):
@@ -902,7 +901,7 @@ class LightSetInfrared(Message):
         payload = infrared_brightness
         return payload
 
-##### MULTIZONE MESSAGES #####
+# MULTIZONE MESSAGES
 
 
 class MultiZoneStateMultiZone(Message):

@@ -2,7 +2,7 @@
 # Author: Meghan Clark
 
 import struct
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List  # NOQA
 
 import bitstring
 
@@ -25,7 +25,8 @@ class Message(object):
         self.tagged = 1 if target_addr == BROADCAST_MAC else 0          # 1 bit/bool, also must be one if getservice
         self.addressable = 1                                            # 1 bit/bool, must be one
         self.protocol = 1024                                            # 12 bits/uint16
-        # 32 bits/uint32, unique ID set by client. If zero, broadcast reply requested. If non-zero, unicast reply requested.
+        # 32 bits/uint32, unique ID set by client.
+        # If zero, broadcast reply requested. If non-zero, unicast reply requested.
         self.source_id = source_id
 
         # Frame Address

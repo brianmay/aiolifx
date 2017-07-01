@@ -50,7 +50,8 @@ class Color:
     def __str__(self) -> str:
         return "Colour: %d %d %d %d" % (
             self._hue, self._saturation, self._brightness, self._kelvin)
-    
+
+
 # Bright Colors
 RED = Color(0, 100, 100, MID_KELVIN)
 YELLOW = Color(60, 100, 100, MID_KELVIN)
