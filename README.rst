@@ -41,10 +41,6 @@ or::
 
      python3 -m pip install aiolifxc
 
-NOTE: When installing with Python 3.4, the installation produce an error message
-      (syntax error). This can be safely ignored. 
-
-
 How to use
 ----------
 
