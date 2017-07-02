@@ -208,9 +208,8 @@ def main() -> None:
     def read_in_wrapper() -> None:
         read_in(loop=loop, devices=devices)
 
-    coro = devices.get_discover_coro()
+    server = devices.start_discover()  # type: aio.Task
     loop.add_reader(sys.stdin, read_in_wrapper)
-    server = loop.create_task(coro)  # type: aio.Task
 
     try:
         print("Hit \"Enter\" to start")

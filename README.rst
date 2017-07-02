@@ -57,8 +57,7 @@ In essence, the test program is this::
 
     loop.add_reader(sys.stdin, readin)
 
-    coro = devices.get_discover_coro()
-    server = loop.create_task(coro)
+    server = devices.start_discover()
 
     try:
         loop.run_forever()

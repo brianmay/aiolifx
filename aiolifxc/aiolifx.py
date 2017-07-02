@@ -177,10 +177,10 @@ class Devices:
     def device_list(self) -> List['Device']:
         return self.get_list(Device)
 
-    def get_discover_coro(
+    def start_discover(
             self, ipv6prefix: str=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
-            discovery_step: int=DISCOVERY_STEP) -> Awaitable:
+            discovery_step: int=DISCOVERY_STEP) -> aio.Task:
         """
         Get the Task that will discoveries.
 
@@ -199,10 +199,11 @@ class Devices:
                 discovery_step=discovery_step,
             )
 
-        return self._loop.create_datagram_endpoint(
+        coro = self._loop.create_datagram_endpoint(
             lifx_discovery,
             local_addr=('0.0.0.0', UDP_BROADCAST_PORT),
         )
+        return self._loop.create_task(coro)
 
     def get_clone(self, new_class: Type[GenericDevices]) -> GenericDevices:
         """
