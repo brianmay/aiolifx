@@ -176,7 +176,6 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                     print("\nError: Selection must be a number.\n")
 
     if devices.selected:
-        await devices.selected.get_meta_information()
         print("Select Function for {}:".format(", ".join([str(d) for d in device_list])))
         print("\t[1]\tPower (0 or 1)")
         print("\t[2]\tWhite (Brightness Temperature)")
@@ -191,7 +190,6 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
     else:
         idx = 1
         print("Select Bulb:")
-        await devices.get_meta_information()
         for x in device_list:
             print("\t[{}]\t{}\t{}\t{}".format(idx, x.label, x.mac_addr, x.group))
             idx += 1

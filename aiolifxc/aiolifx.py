@@ -107,8 +107,16 @@ class Devices:
 
         :param device: The device to add.
         """
-        if self._parent is None:
-            self._device_list.append(device)
+        self._loop.create_task(self.async_register(device))
+
+    async def async_register(self, device: 'Device') -> None:
+        try:
+            await device.get_metadata(loop=self._loop)
+            if self._parent is None:
+                self._device_list.append(device)
+            logger.info("Got light %s.", device)
+        except DeviceOffline:
+            logger.error("Light is offline %s", device)
 
     def unregister(self, device: 'Device') -> None:
         """
