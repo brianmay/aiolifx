@@ -114,7 +114,7 @@ class Devices:
             await device.get_metadata(loop=self._loop)
             if self._parent is None:
                 self._device_list.append(device)
-            logger.info("Got light %s.", device)
+            logger.info("Registered light %s.", device)
         except DeviceOffline:
             logger.error("Light is offline %s", device)
 
@@ -124,6 +124,7 @@ class Devices:
 
         :param device: The light to remove.
         """
+        logger.info("Unregistered light %s.", device)
         if self._parent is None:
             idx = 0
             for x in list([y.mac_addr for y in self._device_list]):
