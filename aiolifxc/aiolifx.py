@@ -308,12 +308,13 @@ class Devices:
         await aio.gather(*coroutines, loop=self._loop)
 
     async def get_meta_information(self) -> None:
-        """ Get all meta information for device. """
+        """ Get all meta information for devices. """
         async def single_device(device: Device) -> None:
             await device.get_metadata(loop=self._loop)
         await self.do_for_every_device(Device, single_device)
 
     async def set_power(self, value: Power, rapid: bool=False) -> None:
+        """ Set power for all devices. """
         async def single_device(device: Device) -> None:
             await device.set_power(value=value, rapid=rapid)
         await self.do_for_every_device(Device, single_device)
@@ -333,11 +334,13 @@ class Lights(Devices):
         return self.get_list(Light)
 
     async def set_light_power(self, value: Power, duration: int=0, rapid: bool=False) -> None:
+        """ Set power for all lights. """
         async def single_device(device: Light) -> None:
             await device.set_light_power(value=value, duration=duration, rapid=rapid)
         await self.do_for_every_device(Light, single_device)
 
     async def set_color(self, color: Color, duration: int = 0, rapid: bool = False) -> None:
+        """ Set color for all lights. """
         async def single_device(device: Light) -> None:
             await device.set_color(color=color, duration=duration, rapid=rapid)
         await self.do_for_every_device(Light, single_device)
@@ -347,6 +350,7 @@ class Lights(Devices):
             color: Color,
             transient: int, period: int, cycles: int, duty_cycle: int, waveform: int,
             rapid: bool = False) -> None:
+        """ Set waveform for all lights. """
         async def single_device(device: Light) -> None:
             await device.set_waveform(
                 color=color,
