@@ -298,6 +298,8 @@ class Devices:
         async def wrapper(device: GenericDevice) -> None:
             try:
                 await fun(device)
+            except DeviceOffline:
+                logger.info("Light is offline %s", device)
             except Exception:
                 logger.exception(
                     "An exception was generated in do_for_every_device for %s:",
@@ -479,7 +481,7 @@ class Device(aio.DatagramProtocol):
                 if self._devices:
                     self._devices.unregister(self)
 
-    def renew(self, ip_addr: str, port: int) -> None:
+    def renew(self, *, family: int, ip_addr: str, port: int) -> None:
         """
         Renew the light registration with updated contact information.
 
@@ -490,6 +492,11 @@ class Device(aio.DatagramProtocol):
             self.cleanup()
             self._ip_addr = ip_addr
             self._port = port
+
+        if self._task is None:
+            coro = self._loop.create_datagram_endpoint(
+                lambda: self, family=family, remote_addr=(self._ip_addr, self._port))
+            self._task = self._loop.create_task(coro)
 
     def cleanup(self) -> None:
         """ Cleanup all resources used by this `Device` object. """
@@ -1278,7 +1285,6 @@ class LifxDiscovery(aio.DatagramProtocol):
         if mac_addr in self._lights:
             # rediscovered
             light = self._lights[mac_addr]  # type: Light
-            light.renew(remote_ip, remote_port)
         else:
             # newly discovered
             light = Light(
@@ -1288,11 +1294,7 @@ class LifxDiscovery(aio.DatagramProtocol):
                 port=remote_port,
                 devices=self._devices)
             self._lights[mac_addr] = light
-
-        coro = self._loop.create_datagram_endpoint(
-            lambda: light, family=family, remote_addr=(remote_ip, remote_port))
-
-        light._task = self._loop.create_task(coro)
+        light.renew(family=family, ip_addr=remote_ip, port=remote_port)
 
     def _discover(self) -> None:
         """ Called regularly based on ``discovery_step`` parameter. """
