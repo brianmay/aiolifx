@@ -2,6 +2,13 @@
 History
 =======
 
+0.5.3 (2017-07-03)
+------------------
+
+Fixed
+~~~~~
+* Fixed FD resource leak in discovery of existing lights.
+
 0.5.2 (2017-07-02)
 ------------------
 
