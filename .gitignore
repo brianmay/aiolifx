@@ -63,3 +63,7 @@ target/
 
 # PyCharm
 /.idea/
+
+# mypy
+/.mypy_cache/
+
