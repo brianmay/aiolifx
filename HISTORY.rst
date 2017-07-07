@@ -2,6 +2,13 @@
 History
 =======
 
+0.5.4 (2017-07-07)
+------------------
+
+Fixed
+~~~~~
+* Fix failure to re-register a light that went off-line.
+
 0.5.3 (2017-07-03)
 ------------------
 
