@@ -497,6 +497,10 @@ class Device(aio.DatagramProtocol):
             coro = self._loop.create_datagram_endpoint(
                 lambda: self, family=family, remote_addr=(self._ip_addr, self._port))
             self._task = self._loop.create_task(coro)
+            # No need to call register here.
+            # Register will be called when we connection_made is called.
+        else:
+            self.register()
 
     def cleanup(self) -> None:
         """ Cleanup all resources used by this `Device` object. """
