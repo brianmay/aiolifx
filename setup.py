@@ -25,7 +25,7 @@ test_requirements = [
 
 setup(
     name='aiolifxc',
-    version='0.5.3',
+    version='0.5.4',
     description='API for local communication with LIFX devices '
                 'over a LAN with asyncio.',
     long_description=readme + '\n\n' + history,
