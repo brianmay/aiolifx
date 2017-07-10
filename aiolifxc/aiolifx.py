@@ -42,6 +42,7 @@ from .unpack import unpack_lifx_message
 UDP_BROADCAST_IP = "255.255.255.255"
 UDP_BROADCAST_PORT = 56700
 DEFAULT_TIMEOUT = 0.5  # How long to wait for an ack or response
+DEFAULT_UNREGISTER_TIMEOUT = 0.5  # How long to wait before unregistering a light
 DEFAULT_ATTEMPTS = 3  # How many time should we try to send to the bulb`
 DISCOVERY_INTERVAL = 180
 DISCOVERY_STEP = 5
@@ -390,6 +391,7 @@ class Device(aio.DatagramProtocol):
         self._registered = False  # type: bool
         self._retry_count = DEFAULT_ATTEMPTS
         self._timeout = DEFAULT_TIMEOUT
+        self._unregister_timeout = DEFAULT_UNREGISTER_TIMEOUT
         self._transport = None  # type: Optional[aio.DatagramTransport]
         self._task = None  # type: Optional[aio.Task]
         self._seq = 0
@@ -410,7 +412,7 @@ class Device(aio.DatagramProtocol):
         self._host_firmware_build_timestamp = None  # type: Optional[int]
         self._wifi_firmware_version = None  # type: Optional[str]
         self._wifi_firmware_build_timestamp = None  # type: Optional[int]
-        self._last_msg = datetime.datetime.now() - datetime.timedelta(seconds=600)
+        self._last_msg = datetime.datetime.now()
 
     @property
     def mac_addr(self) -> str:
@@ -454,8 +456,8 @@ class Device(aio.DatagramProtocol):
         self.register()
         assert isinstance(data, bytes)
         response = unpack_lifx_message(data)
+        self._last_msg = datetime.datetime.now()
         if response.seq_num in self._message:
-            self._last_msg = datetime.datetime.now()
             response_type, myevent, __ = self._message[response.seq_num]
             if type(response) == response_type:
                 if response.source_id == self._source_id:
@@ -476,7 +478,7 @@ class Device(aio.DatagramProtocol):
         if self._registered:
             # Only if we have not received any message recently.
             # On slower CPU, a race condition seem to sometime occur
-            if datetime.datetime.now() - datetime.timedelta(seconds=DEFAULT_TIMEOUT) > self._last_msg:
+            if datetime.datetime.now() - datetime.timedelta(seconds=self._unregister_timeout) > self._last_msg:
                 self._registered = False
                 if self._devices:
                     self._devices.unregister(self)
