@@ -180,7 +180,7 @@ class Devices:
         return self.get_list(Device)
 
     def start_discover(
-            self, ipv6prefix: str=None,
+            self, ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
             discovery_step: int=DISCOVERY_STEP) -> aio.Task:
         """
@@ -265,9 +265,9 @@ class Devices:
 
     def get_by_lists(
             self: GenericDevices, *,
-            groups: List[str]=None,
-            labels: List[str]=None,
-            mac_addrs: List[str]=None) -> GenericDevices:
+            groups: Optional[List[str]]=None,
+            labels: Optional[List[str]]=None,
+            mac_addrs: Optional[List[str]]=None) -> GenericDevices:
         """
         Get a clone Devices object filtered by group list and label list.
         :param groups: The list of groups for the filter.
@@ -373,7 +373,8 @@ class Device(aio.DatagramProtocol):
     # port is the port we are connected to
     def __init__(
             self, *, loop: aio.AbstractEventLoop,
-            mac_addr: str, ip_addr: str, port: int, devices: Devices=None) -> None:
+            mac_addr: str, ip_addr: str, port: int,
+            devices: Optional[Devices]=None) -> None:
         """
         Construct a new Device object.
 
@@ -538,7 +539,7 @@ class Device(aio.DatagramProtocol):
             await aio.sleep(sleep_interval)
 
     def _fire_and_forget(
-            self, msg_type: Type[Message], payload: Dict[str, Any]=None,
+            self, msg_type: Type[Message], payload: Optional[Dict[str, Any]]=None,
             *, num_repeats: int=1) -> None:
         """
         Don't wait for Acks or Responses, just send the same message repeatedly as fast as
@@ -559,7 +560,9 @@ class Device(aio.DatagramProtocol):
 
     async def _try_sending(
             self, msg: Message, response_type: Type[GenericResponse],
-            *, timeout_secs: float=None, max_attempts: int=None) -> GenericResponse:
+            *,
+            timeout_secs: Optional[float]=None,
+            max_attempts: Optional[int]=None) -> GenericResponse:
         """
         Send message and wait for appropriate response.
 
@@ -602,7 +605,9 @@ class Device(aio.DatagramProtocol):
 
     async def _req_with_ack(
             self, msg_type: Type[Message], payload: Dict[str, Any],
-            *, timeout_secs: int=None, max_attempts: int=None) -> msgtypes.Acknowledgement:
+            *,
+            timeout_secs: Optional[int]=None,
+            max_attempts: Optional[int]=None) -> msgtypes.Acknowledgement:
         """
         Send a message and expect an ACK response.
 
@@ -625,8 +630,10 @@ class Device(aio.DatagramProtocol):
     # Usually used for Get messages, or for state confirmation after Set (hence the optional payload)
     async def _req_with_resp(
             self, msg_type: Type[Message], response_type: Type[GenericResponse],
-            payload: Dict[str, Any]=None,
-            *, timeout_secs: int=None, max_attempts: int=None) -> GenericResponse:
+            payload: Optional[Dict[str, Any]]=None,
+            *,
+            timeout_secs: Optional[int]=None,
+            max_attempts: Optional[int]=None) -> GenericResponse:
         """
         Send a message and expect an response.
 
@@ -651,7 +658,9 @@ class Device(aio.DatagramProtocol):
     async def _req_with_ack_resp(
             self, msg_type: Type[Message], response_type: Type[GenericResponse],
             payload: Dict[str, str],
-            *, timeout_secs: int=None, max_attempts: int=None) -> GenericResponse:
+            *,
+            timeout_secs: Optional[int]=None,
+            max_attempts: Optional[int]=None) -> GenericResponse:
         """
         Send a message and expect an ACK and a response.
 
@@ -1010,7 +1019,7 @@ class Light(Device):
             self, *, loop: aio.AbstractEventLoop,
             mac_addr: str, ip_addr: str,
             port: int=UDP_BROADCAST_PORT,
-            devices: Devices=None) -> None:
+            devices: Optional[Devices]=None) -> None:
         """
         Construct a new Light object.
 
@@ -1109,7 +1118,8 @@ class Light(Device):
                 {"color": value, "duration": duration})
         self._color = color
 
-    async def get_color_zones(self, start_index: int, end_index: int=None) -> List[Color]:
+    async def get_color_zones(
+            self, start_index: int, end_index: Optional[int]=None) -> List[Color]:
         """
         Get color zones.
 
@@ -1227,8 +1237,8 @@ class LifxDiscovery(aio.DatagramProtocol):
     def __init__(
             self, *,
             loop: aio.AbstractEventLoop,
-            devices: Devices=None,
-            ipv6prefix: str=None,
+            devices: Optional[Devices]=None,
+            ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
             discovery_step: int=DISCOVERY_STEP) -> None:
         """

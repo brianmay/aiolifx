@@ -17,7 +17,7 @@ import bitstring
 class GetService(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
 
         if payload is None:
@@ -34,11 +34,8 @@ class GetService(Message):
 class StateService(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.service = payload["service"]
         self.port = payload["port"]
@@ -61,11 +58,8 @@ class StateService(Message):
 class GetHostInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -78,11 +72,8 @@ class GetHostInfo(Message):
 class StateHostInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.signal = payload["signal"]
         self.tx = payload["tx"]
@@ -111,11 +102,8 @@ class StateHostInfo(Message):
 class GetHostFirmware(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -128,11 +116,8 @@ class GetHostFirmware(Message):
 class StateHostFirmware(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.build = payload["build"]
         self.reserved1 = payload["reserved1"]
@@ -158,11 +143,8 @@ class StateHostFirmware(Message):
 class GetWifiInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -175,11 +157,8 @@ class GetWifiInfo(Message):
 class StateWifiInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.signal = payload["signal"]
         self.tx = payload["tx"]
@@ -208,11 +187,8 @@ class StateWifiInfo(Message):
 class GetWifiFirmware(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -225,11 +201,8 @@ class GetWifiFirmware(Message):
 class StateWifiFirmware(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.build = payload["build"]
         self.reserved1 = payload["reserved1"]
@@ -255,11 +228,8 @@ class StateWifiFirmware(Message):
 class GetPower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -272,11 +242,8 @@ class GetPower(Message):
 class SetPower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.power_level = payload["power_level"]
         super().__init__(
@@ -296,11 +263,8 @@ class SetPower(Message):
 class StatePower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.power_level = payload["power_level"]
         super().__init__(
@@ -320,11 +284,8 @@ class StatePower(Message):
 class GetLabel(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -337,11 +298,8 @@ class GetLabel(Message):
 class SetLabel(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.label = payload["label"]
         super().__init__(
@@ -363,11 +321,8 @@ class SetLabel(Message):
 class StateLabel(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.label = payload["label"]
         super().__init__(
@@ -389,11 +344,8 @@ class StateLabel(Message):
 class GetVersion(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -406,11 +358,8 @@ class GetVersion(Message):
 class StateVersion(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.vendor = payload["vendor"]
         self.product = payload["product"]
@@ -436,11 +385,8 @@ class StateVersion(Message):
 class GetInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -453,11 +399,8 @@ class GetInfo(Message):
 class StateInfo(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.time = payload["time"]
         self.uptime = payload["uptime"]
@@ -483,11 +426,8 @@ class StateInfo(Message):
 class GetLocation(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -500,11 +440,8 @@ class GetLocation(Message):
 class StateLocation(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.location = payload["location"]
         self.label = payload["label"]
@@ -532,11 +469,8 @@ class StateLocation(Message):
 class GetGroup(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -549,11 +483,8 @@ class GetGroup(Message):
 class StateGroup(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.group = payload["group"]
         self.label = payload["label"]
@@ -581,11 +512,8 @@ class StateGroup(Message):
 class Acknowledgement(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -598,11 +526,8 @@ class Acknowledgement(Message):
 class EchoRequest(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.byte_array = payload["byte_array"]
         super().__init__(
@@ -629,11 +554,8 @@ class EchoRequest(Message):
 class EchoResponse(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.byte_array = payload["byte_array"]
         super().__init__(
@@ -656,11 +578,8 @@ class EchoResponse(Message):
 class LightGet(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -673,11 +592,8 @@ class LightGet(Message):
 class LightSetColor(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.color = payload["color"]
         self.duration = payload["duration"]
@@ -700,11 +616,8 @@ class LightSetColor(Message):
 class LightSetWaveform(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.transient = payload["transient"]
         self.color = payload["color"]
@@ -735,11 +648,8 @@ class LightSetWaveform(Message):
 class LightState(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.color = payload["color"]
         self.reserved1 = payload["reserved1"]
@@ -773,11 +683,8 @@ class LightState(Message):
 class LightGetPower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -790,11 +697,8 @@ class LightGetPower(Message):
 class LightSetPower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.power_level = payload["power_level"]
         self.duration = payload["duration"]
@@ -815,11 +719,8 @@ class LightSetPower(Message):
 class LightStatePower(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.power_level = payload["power_level"]
         super().__init__(
@@ -841,11 +742,8 @@ class LightStatePower(Message):
 class LightGetInfrared(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         super().__init__(
             target_addr=target_addr, source_id=source_id,
@@ -858,11 +756,8 @@ class LightGetInfrared(Message):
 class LightStateInfrared(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.infrared_brightness = payload["infrared_brightness"]
         super().__init__(
@@ -882,11 +777,8 @@ class LightStateInfrared(Message):
 class LightSetInfrared(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.infrared_brightness = payload["infrared_brightness"]
         super().__init__(
@@ -907,11 +799,8 @@ class LightSetInfrared(Message):
 class MultiZoneStateMultiZone(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.count = payload["count"]
         self.index = payload["index"]
@@ -938,11 +827,8 @@ class MultiZoneStateMultiZone(Message):
 class MultiZoneStateZone(Message):  # 503
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.count = payload["count"]
         self.index = payload["index"]
@@ -968,11 +854,8 @@ class MultiZoneStateZone(Message):  # 503
 class MultiZoneSetColorZones(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.start_index = payload["start_index"]
         self.end_index = payload["end_index"]
@@ -999,11 +882,8 @@ class MultiZoneSetColorZones(Message):
 class MultiZoneGetColorZones(Message):
     def __init__(
             self, *, target_addr: str, source_id: int, seq_num: int,
-            payload: Dict[str, Any]=None,
+            payload: Dict[str, Any],
             ack_requested: bool=False, response_requested: bool=False) -> None:
-
-        if payload is None:
-            payload = {}
 
         self.start_index = payload["start_index"]
         self.end_index = payload["end_index"]

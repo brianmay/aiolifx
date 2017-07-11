@@ -209,7 +209,7 @@ def main() -> None:
         read_in(loop=loop, devices=devices)
 
     server = devices.start_discover()  # type: aio.Task
-    loop.add_reader(sys.stdin, read_in_wrapper)
+    loop.add_reader(sys.stdin.fileno(), read_in_wrapper)
 
     try:
         print("Hit \"Enter\" to start")
@@ -219,7 +219,7 @@ def main() -> None:
         print("Got exception %s" % e)
     finally:
         server.cancel()
-        loop.remove_reader(sys.stdin)
+        loop.remove_reader(sys.stdin.fileno())
         loop.close()
 
 
