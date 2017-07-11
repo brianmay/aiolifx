@@ -48,8 +48,10 @@ def read_in(*, loop: aio.AbstractEventLoop, devices: MyDevices) -> None:
 
 
 async def read_in_process(*, selection: str, devices: MyDevices) -> None:
+    selected_devices = None  # type: Optional[alix.Devices]
     selected_lights = None   # type: Optional[alix.Lights]
     if devices.selected is not None:
+        selected_devices = devices.selected
         selected_lights = devices.selected.get_clone(alix.Lights)
 
     device_list = list(devices.device_list)  # type: List[alix.Device]
@@ -107,7 +109,7 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                               "saturation (0-100) and brightness (0-100)\n")
 
                 elif int(lov[0]) == 4:
-                    for device in device_list:
+                    for device in selected_devices.device_list:
                         await device.get_power()
                         await device.get_group()
                         await device.get_location()
@@ -116,18 +118,18 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                         print(device.device_product_str("    "))
                     devices.selected = None
                 elif int(lov[0]) == 5:
-                    for device in device_list:
+                    for device in selected_devices.device_list:
                         await device.get_host_firmware()
                         await device.get_wifi_firmware()
                         print(device.device_firmware_str("   "))
                     devices.selected = None
                 elif int(lov[0]) == 6:
-                    for device in device_list:
+                    for device in selected_devices.device_list:
                         wifi_info = await device.get_wifi_info()
                         print(device.device_radio_str(wifi_info))
                     devices.selected = None
                 elif int(lov[0]) == 7:
-                    for device in device_list:
+                    for device in selected_devices.device_list:
                         host_info = await device.get_host_info()
                         print(device.device_time_str(host_info))
                     devices.selected = None
