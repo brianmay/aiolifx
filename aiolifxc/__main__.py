@@ -59,7 +59,10 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
 
     lov = [x for x in selection.split(" ") if x != ""]
     if lov:
-        if devices.selected is not None and selected_lights is not None:
+        if devices.selected is not None:
+            assert selected_devices is not None
+            assert selected_lights is not None
+
             # try:
             if True:
                 if int(lov[0]) == 0:
