@@ -182,7 +182,7 @@ class Devices:
     def start_discover(
             self, ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
-            discovery_step: int=DISCOVERY_STEP) -> aio.Task:
+            discovery_step: int=DISCOVERY_STEP) -> aio.Task[None]:
         """
         Get the Task that will discoveries.
 
@@ -205,7 +205,7 @@ class Devices:
             lifx_discovery,
             local_addr=('0.0.0.0', UDP_BROADCAST_PORT),
         )
-        return self._loop.create_task(coro)
+        return cast(aio.Task[None], self._loop.create_task(coro))
 
     def get_clone(self, new_class: Type[GenericDevices]) -> GenericDevices:
         """
@@ -394,7 +394,7 @@ class Device(aio.DatagramProtocol):
         self._timeout = DEFAULT_TIMEOUT
         self._unregister_timeout = DEFAULT_UNREGISTER_TIMEOUT
         self._transport = None  # type: Optional[aio.DatagramTransport]
-        self._task = None  # type: Optional[aio.Task]
+        self._task = None  # type: Optional[aio.Task[None]]
         self._seq = 0
         # Key is the message sequence, value is (response type, Event, response)
         self._message = {}  # type: Dict[int, List]
@@ -499,7 +499,7 @@ class Device(aio.DatagramProtocol):
         if self._task is None:
             coro = self._loop.create_datagram_endpoint(
                 lambda: self, family=family, remote_addr=(self._ip_addr, self._port))
-            self._task = self._loop.create_task(coro)
+            self._task = cast(aio.Task[None], self._loop.create_task(coro))
             # No need to call register here.
             # Register will be called when we connection_made is called.
         else:
