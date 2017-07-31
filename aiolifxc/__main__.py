@@ -213,7 +213,7 @@ def main() -> None:
     def read_in_wrapper() -> None:
         read_in(loop=loop, devices=devices)
 
-    server = devices.start_discover()  # type: aio.Task[None]
+    server = devices.start_discover()  # type: aio.Task
     loop.add_reader(sys.stdin.fileno(), read_in_wrapper)
 
     try:
