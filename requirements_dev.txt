@@ -8,4 +8,4 @@ tox==2.8.1
 Sphinx==1.6.3
 mypy==0.521
 pytest==3.2.1
-pytest-runner==2.12
+pytest-runner==2.12.1
