@@ -57,14 +57,13 @@ In essence, the test program is this::
 
     loop.add_reader(sys.stdin, readin)
 
-    server = devices.start_discover()
+    devices.start_discover()
 
     try:
         loop.run_forever()
     except Exception as e:
         print("Got exception %s" % e)
     finally:
-        server.cancel()
         loop.remove_reader(sys.stdin)
         loop.close()
 

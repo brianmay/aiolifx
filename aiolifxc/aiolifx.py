@@ -182,14 +182,14 @@ class Devices:
     def start_discover(
             self, ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
-            discovery_step: int=DISCOVERY_STEP) -> aio.Task:
+            discovery_step: int=DISCOVERY_STEP) -> None:
         """
         Get the Task that will discoveries.
 
         :param ipv6prefix: The IPv6 prefix to use for IPv6 addresses.
         :param discovery_interval: How often should we rerun discover (seconds)?
         :param discovery_step: How often should we wake up (seconds)?
-        :return: The asyncio task.
+        :return: None
         """
         def lifx_discovery() -> aio.BaseProtocol:
             """ Construct an LIFX discovery protocol handler. """
@@ -205,7 +205,8 @@ class Devices:
             lifx_discovery,
             local_addr=('0.0.0.0', UDP_BROADCAST_PORT),
         )
-        return self._loop.create_task(coro)
+        self._loop.create_task(coro)
+        return
 
     def get_clone(self, new_class: Type[GenericDevices]) -> GenericDevices:
         """

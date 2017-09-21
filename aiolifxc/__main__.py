@@ -213,7 +213,7 @@ def main() -> None:
     def read_in_wrapper() -> None:
         read_in(loop=loop, devices=devices)
 
-    server = devices.start_discover()  # type: aio.Task
+    devices.start_discover()  # type: aio.Task
     loop.add_reader(sys.stdin.fileno(), read_in_wrapper)
 
     try:
@@ -223,7 +223,6 @@ def main() -> None:
     except Exception as e:
         print("Got exception %s" % e)
     finally:
-        server.cancel()
         loop.remove_reader(sys.stdin.fileno())
         loop.close()
 
