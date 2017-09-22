@@ -27,8 +27,6 @@ This is a fork from
 It uses coroutines as opposed to callbacks. If you prefer callbacks,
 please see his implementation instead. This was forked from version 0.5.0.
 
-This should be considered Alpha status. While it works, and seems to work
-well, there are still changes I wish to make that may break the API.
 
 Installation
 ------------

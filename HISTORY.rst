@@ -2,6 +2,16 @@
 History
 =======
 
+0.5.6 (UNRELEASED)
+------------------
+
+Changed
+~~~~~~~
+* Update pip dependancies.
+* Simplify start_discovery function.
+* Update to Beta status.
+
+
 0.5.5 (2017-07-11)
 ------------------
 
