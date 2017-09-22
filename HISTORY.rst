@@ -10,6 +10,11 @@ Changed
 * Update pip dependancies.
 * Simplify start_discovery function.
 * Update to Beta status.
+* Fix API docs on readthedocs.
+
+Fixed
+~~~~~
+* Update MANIFEST.in file.
 
 
 0.5.5 (2017-07-11)
