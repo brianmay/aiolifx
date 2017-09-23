@@ -21,6 +21,7 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+import logging
 import sys
 import asyncio as aio
 from typing import List, Optional  # noqa
@@ -208,6 +209,7 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
 
 def main() -> None:
     """ Main CLI function. """
+    logging.basicConfig(level=logging.DEBUG)
     loop = aio.get_event_loop()
     devices = MyDevices(loop=loop)
 

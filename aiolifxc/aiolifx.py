@@ -595,6 +595,9 @@ class Device(aio.DatagramProtocol):
                 break
             except aio.TimeoutError:
                 if attempts >= max_attempts:
+                    logger.error(
+                        "Light %s cannot be reached after %s retries",
+                        self, max_attempts)
                     if msg.seq_num in self._message:
                         del(self._message[msg.seq_num])
                     # It's dead Jim
@@ -1302,6 +1305,7 @@ class LifxDiscovery(aio.DatagramProtocol):
         if mac_addr in self._lights:
             # rediscovered
             light = self._lights[mac_addr]  # type: Light
+            logger.debug("Rediscovered light %s", light)
         else:
             # newly discovered
             light = Light(
@@ -1311,6 +1315,7 @@ class LifxDiscovery(aio.DatagramProtocol):
                 port=remote_port,
                 devices=self._devices)
             self._lights[mac_addr] = light
+            logger.debug("Discovered light %s", light)
         light.renew(family=family, ip_addr=remote_ip, port=remote_port)
 
     def _discover(self) -> None:
@@ -1319,16 +1324,21 @@ class LifxDiscovery(aio.DatagramProtocol):
         if self._transport:
             assert self._transport is not None
 
-            if self._discovery_countdown <= 0:
-                self._discovery_countdown = self._discovery_interval
-                msg = msgtypes.GetService(
-                    target_addr=BROADCAST_MAC, source_id=self._source_id,
-                    seq_num=0, payload={},
-                    ack_requested=False, response_requested=True)
-                self._transport.sendto(msg.generate_packed_message(), (UDP_BROADCAST_IP, UDP_BROADCAST_PORT))
-            else:
-                self._discovery_countdown -= self._discovery_step
-            self._loop.call_later(self._discovery_step, self._discover)
+            try:
+                if self._discovery_countdown <= 0:
+                    self._discovery_countdown = self._discovery_interval
+                    logger.debug("Sending discovery packet")
+                    msg = msgtypes.GetService(
+                        target_addr=BROADCAST_MAC, source_id=self._source_id,
+                        seq_num=0, payload={},
+                        ack_requested=False, response_requested=True)
+                    self._transport.sendto(msg.generate_packed_message(), (UDP_BROADCAST_IP, UDP_BROADCAST_PORT))
+                else:
+                    self._discovery_countdown -= self._discovery_step
+            except Exception:
+                logger.exception("An error occured in _discover()")
+            finally:
+                self._loop.call_later(self._discovery_step, self._discover)
 
     def _register(self, alight: Light) -> None:
         """ Register discovered light. """
