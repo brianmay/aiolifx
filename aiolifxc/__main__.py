@@ -181,7 +181,8 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                     print("\nError: Selection must be a number.\n")
 
     if devices.selected:
-        print("Select Function for {}:".format(", ".join([str(d) for d in device_list])))
+        selected_list = devices.selected.device_list
+        print("Select Function for {}:".format(", ".join([str(d) for d in selected_list])))
         print("\t[1]\tPower (0 or 1)")
         print("\t[2]\tWhite (Brightness Temperature)")
         print("\t[3]\tColour (Hue Saturation Value)")
