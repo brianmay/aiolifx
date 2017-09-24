@@ -2,7 +2,7 @@
 History
 =======
 
-0.5.7 (UNRELEASED)
+1.0.0 (UNRELEASED)
 ------------------
 
 Changed
@@ -10,6 +10,7 @@ Changed
 
 * Add more log messages.
 * Fix display of selected devices in sample app.
+* Simplify API. Merge device classes into light classes.
 
 
 0.5.6 (2017-09-22)

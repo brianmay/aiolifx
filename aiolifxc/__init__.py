@@ -1,6 +1,6 @@
 """Top-level package for aiolifxc."""
 
-from .aiolifx import Devices, Lights, Device, Light, LifxDiscovery, DeviceOffline  # NOQA
+from .aiolifx import Lights, Light, LifxDiscovery, LightOffline  # NOQA
 from .colors import Color  # NOQA
 
 __author__ = """Brian May"""

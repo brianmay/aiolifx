@@ -29,6 +29,7 @@ import random
 import socket
 from typing import (
     List, Dict, Type, Optional, Union, Tuple, Callable, TypeVar,
+    Iterable, Iterator,
     Any, AnyStr, cast)
 from typing import Set  # NOQA
 
@@ -48,8 +49,6 @@ DISCOVERY_INTERVAL = 180
 DISCOVERY_STEP = 5
 
 GenericResponse = TypeVar('GenericResponse', bound=Message)
-GenericDevices = TypeVar('GenericDevices', bound='Devices')
-GenericDevice = TypeVar('GenericDevice', bound='Device')
 Power = Union[bool, int]
 
 logger = logging.getLogger(__name__)
@@ -87,97 +86,83 @@ def _str_map(key: Optional[Power]) -> str:
     return string_representation
 
 
-class DeviceOffline(Exception):
+class LightOffline(Exception):
     pass
 
 
-class Devices:
-    """ Class that represents a number of Devices. """
+class Lights(Iterable['Light']):
+    """ Class that represents a number of Lights. """
     def __init__(self, loop: aio.AbstractEventLoop) -> None:
-        self._device_list = []  # type: List[Device]
+        self._light_list = []  # type: List['Light']
         self._loop = loop
         self._all = True
-        self._parent = None  # type: Optional['Devices']
+        self._parent = None  # type: Optional['Lights']
         self._groups = None  # type: Optional[List[str]]
         self._labels = None  # type: Optional[List[str]]
         self._mac_addrs = None  # type: Optional[List[str]]
 
-    def register(self, device: 'Device') -> None:
+    def register(self, light: 'Light') -> None:
         """
-        Add a new device.
+        Add a new light.
 
-        :param device: The device to add.
+        :param light: The light to add.
         """
-        self._loop.create_task(self.async_register(device))
+        self._loop.create_task(self.async_register(light))
 
-    async def async_register(self, device: 'Device') -> None:
+    async def async_register(self, light: 'Light') -> None:
         try:
-            await device.get_metadata(loop=self._loop)
+            await light.get_metadata(loop=self._loop)
             if self._parent is None:
-                self._device_list.append(device)
-            logger.info("Registered light %s.", device)
-        except DeviceOffline:
-            logger.error("Light is offline %s", device)
+                self._light_list.append(light)
+            logger.info("Registered light %s.", light)
+        except LightOffline:
+            logger.error("Light is offline %s", light)
 
-    def unregister(self, device: 'Device') -> None:
+    def unregister(self, light: 'Light') -> None:
         """
-        Remove an existing device.
+        Remove an existing light.
 
-        :param device: The light to remove.
+        :param light: The light to remove.
         """
-        logger.info("Unregistered light %s.", device)
+        logger.info("Unregistered light %s.", light)
         if self._parent is None:
             idx = 0
-            for x in list([y.mac_addr for y in self._device_list]):
-                if x == device.mac_addr:
-                    del(self._device_list[idx])
+            for x in list([y.mac_addr for y in self._light_list]):
+                if x == light.mac_addr:
+                    del(self._light_list[idx])
                     break
                 idx += 1
 
-    def get_list(self, device_class: Type[GenericDevice]) -> List[GenericDevice]:
-        if self._parent is not None:
-            device_list = self._parent.get_list(Device)
-        else:
-            device_list = self._device_list
-
-        devices = set()  # type: Set['Device']
-
+    def _filter(self, light: 'Light') -> bool:
         # Filter list according to requirements of this object
         if self._all:
-            devices |= set([
-                d for d in device_list
-            ])
+            return True
 
         if self._groups is not None:
-            for group in self._groups:
-                devices |= set([
-                    d for d in device_list if d.group == group
-                ])
+            if light.group in self._groups:
+                return True
 
         if self._labels is not None:
-            for label in self._labels:
-                devices |= set([
-                    d for d in device_list if d.label == label
-                ])
+            if light.label in self._labels:
+                return True
 
         if self._mac_addrs is not None:
-            for mac_addr in self._mac_addrs:
-                devices |= set([
-                    d for d in device_list if d.mac_addr == mac_addr
-                ])
+            if light.mac_addr in self._mac_addrs:
+                return True
 
-        # Ensure all objects are subclasses of GenericDevice.
-        result = []  # type: List[GenericDevice]
-        for device in devices:
-            if isinstance(device, device_class):
-                result.append(device)
+        return False
 
-        # Return the result
-        return result
+    def __iter__(self) -> Iterator['Light']:
+        if self._parent is not None:
+            light_iter = iter(self._parent)
+        else:
+            light_iter = iter(self._light_list)
 
-    @property
-    def device_list(self) -> List['Device']:
-        return self.get_list(Device)
+        return (
+            light
+            for light in light_iter
+            if self._filter(light)
+        )
 
     def start_discover(
             self, ipv6prefix: Optional[str]=None,
@@ -195,7 +180,7 @@ class Devices:
             """ Construct an LIFX discovery protocol handler. """
             return LifxDiscovery(
                 loop=self._loop,
-                devices=self,
+                lights=self,
                 ipv6prefix=ipv6prefix,
                 discovery_interval=discovery_interval,
                 discovery_step=discovery_step,
@@ -208,9 +193,9 @@ class Devices:
         self._loop.create_task(coro)
         return
 
-    def get_clone(self, new_class: Type[GenericDevices]) -> GenericDevices:
+    def get_clone(self) -> 'Lights':
         """
-        Get clone Devices object.
+        Get clone Lights object.
 
         :param new_class: Class to use to create new object.
         :return: The new object.
@@ -218,138 +203,125 @@ class Devices:
         The clone will reference the objects from the parent.
         """
         # noinspection PyCallingNonCallable
-        child = new_class(loop=self._loop)
+        child = type(self)(loop=self._loop)
         child._parent = self
         return child
 
-    def get_by_group(self: GenericDevices, group: str) -> GenericDevices:
+    def get_by_group(self, group: str) -> 'Lights':
         """
-        Get clone Devices object filtered by group.
+        Get clone Lights object filtered by group.
 
         :param group: The name of the group.
         :return: The new object.
 
-        The groups must be loaded already in the devices.
+        The groups must be loaded already in the lights.
         """
-        result = self.get_clone(type(self))
+        result = self.get_clone()
         result._groups = [group]
         result._all = False
         return result
 
-    def get_by_label(self: GenericDevices, label: str) -> GenericDevices:
+    def get_by_label(self, label: str) -> 'Lights':
         """
-        Get a clone Devices object filtered by label.
+        Get a clone Lights object filtered by label.
 
         :param label: The name of the label.
         :return: The new object.
 
-        The labels must be loaded already in the devices.
+        The labels must be loaded already in the lights.
         """
-        result = self.get_clone(type(self))
+        result = self.get_clone()
         result._labels = [label]
         result._all = False
         return result
 
-    def get_by_mac_addr(self: GenericDevices, mac_addr: str) -> GenericDevices:
+    def get_by_mac_addr(self, mac_addr: str) -> 'Lights':
         """
-        Get a clone Devices object filtered by label.
+        Get a clone Lights object filtered by label.
 
         :param label: The name of the label.
         :return: The new object.
 
-        The labels must be loaded already in the devices.
+        The labels must be loaded already in the lights.
         """
-        result = self.get_clone(type(self))
+        result = self.get_clone()
         result._mac_addrs = [mac_addr]
         result._all = False
         return result
 
     def get_by_lists(
-            self: GenericDevices, *,
+            self, *,
             groups: Optional[List[str]]=None,
             labels: Optional[List[str]]=None,
-            mac_addrs: Optional[List[str]]=None) -> GenericDevices:
+            mac_addrs: Optional[List[str]]=None) -> 'Lights':
         """
-        Get a clone Devices object filtered by group list and label list.
+        Get a clone Lights object filtered by group list and label list.
         :param groups: The list of groups for the filter.
         :param labels: The list of labels for the filter.
         :return: The new object.
 
-        The groups and labels must be loaded already in the devices.
+        The groups and labels must be loaded already in the lights.
 
         """
-        result = self.get_clone(type(self))
+        result = self.get_clone()
         result._groups = groups
         result._labels = labels
         result._mac_addrs = mac_addrs
         result._all = False
         return result
 
-    async def do_for_every_device(
-            self: GenericDevices,
-            device_class: Type[GenericDevice],
-            fun: Callable[[GenericDevice], Awaitable],
+    async def do_for_every_light(
+            self, fun: Callable[['Light'], Awaitable],
     ) -> None:
         """
-        Run a async function for every device.
+        Run a async function for every light.
 
         :param fun: The function to call.
 
         Errors will get logged but not propagated.
         """
-        async def wrapper(device: GenericDevice) -> None:
+        async def wrapper(light: 'Light') -> None:
             try:
-                await fun(device)
-            except DeviceOffline:
-                logger.info("Light is offline %s", device)
+                await fun(light)
+            except LightOffline:
+                logger.info("Light is offline %s", light)
             except Exception:
                 logger.exception(
-                    "An exception was generated in do_for_every_device for %s:",
-                    device,
+                    "An exception was generated in do_for_every_light for %s:",
+                    light,
                 )
 
         coroutines = []
-        for device in self.get_list(device_class):
-            coroutines.append(wrapper(device))
+        for light in iter(self):
+            coroutines.append(wrapper(light))
         await aio.gather(*coroutines, loop=self._loop)
 
     async def get_meta_information(self) -> None:
-        """ Get all meta information for devices. """
-        async def single_device(device: Device) -> None:
-            await device.get_metadata(loop=self._loop)
-        await self.do_for_every_device(Device, single_device)
+        """ Get all meta information for lights. """
+        async def single_light(light: 'Light') -> None:
+            await light.get_metadata(loop=self._loop)
+        await self.do_for_every_light(single_light)
 
     async def set_power(self, value: Power, rapid: bool=False) -> None:
-        """ Set power for all devices. """
-        async def single_device(device: Device) -> None:
-            await device.set_power(value=value, rapid=rapid)
-        await self.do_for_every_device(Device, single_device)
+        """ Set power for all lights. """
+        async def single_light(light: Light) -> None:
+            await light.set_power(value=value, rapid=rapid)
+        await self.do_for_every_light(single_light)
 
     def __str__(self) -> str:
-        return format(", ".join([str(d) for d in self.device_list]))
-
-
-class Lights(Devices):
-    """ Class that represents a number of Lights. """
-    def __init__(self, loop: aio.AbstractEventLoop) -> None:
-        super().__init__(loop=loop)
-        self._device_list = []  # type: List[Light]
-
-    @property
-    def light_list(self) -> List['Light']:
-        return self.get_list(Light)
+        return format(", ".join(str(d) for d in iter(self)))
 
     async def set_light_power(self, value: Power, duration: int=0, rapid: bool=False) -> None:
         """ Set power for all lights. """
-        async def single_device(device: Light) -> None:
-            await device.set_light_power(value=value, duration=duration, rapid=rapid)
-        await self.do_for_every_device(Light, single_device)
+        async def single_light(light: Light) -> None:
+            await light.set_light_power(value=value, duration=duration, rapid=rapid)
+        await self.do_for_every_light(single_light)
 
     async def set_color(self, color: Color, duration: int = 0, rapid: bool = False) -> None:
         """ Set color for all lights. """
-        async def single_device(device: Light) -> None:
-            await device.set_color(color=color, duration=duration, rapid=rapid)
-        await self.do_for_every_device(Light, single_device)
+        async def single_light(light: Light) -> None:
+            await light.set_color(color=color, duration=duration, rapid=rapid)
+        await self.do_for_every_light(single_light)
 
     async def set_waveform(
             self, *,
@@ -357,17 +329,17 @@ class Lights(Devices):
             transient: int, period: int, cycles: int, duty_cycle: int, waveform: int,
             rapid: bool = False) -> None:
         """ Set waveform for all lights. """
-        async def single_device(device: Light) -> None:
-            await device.set_waveform(
+        async def single_light(light: Light) -> None:
+            await light.set_waveform(
                 color=color,
                 transient=transient, period=period, cycles=cycles, duty_cycle=duty_cycle, waveform=waveform,
                 rapid=rapid)
 
-        await self.do_for_every_device(Light, single_device)
+        await self.do_for_every_light(single_light)
 
 
-class Device(aio.DatagramProtocol):
-    """ Implement common functions for a LIFX Device. """
+class Light(aio.DatagramProtocol):
+    """ Implement common functions for a LIFX Light. """
 
     # mac_addr is a string, with the ":" and everything.
     # ip_addr is a string with the ip address
@@ -375,21 +347,21 @@ class Device(aio.DatagramProtocol):
     def __init__(
             self, *, loop: aio.AbstractEventLoop,
             mac_addr: str, ip_addr: str, port: int,
-            devices: Optional[Devices]=None) -> None:
+            lights: Optional[Lights]=None) -> None:
         """
-        Construct a new Device object.
+        Construct a new Light object.
 
         :param loop: The Asyncio event loop.
         :param mac_addr: The MAC Address. with the ":" and everything.
         :param ip_addr: A string with the IP address.
         :param port: The UDP port to use.
-        :param devices: The lights list this light belongs to.
+        :param lights: The lights list this light belongs to.
         """
         self._loop = loop
-        self._mac_addr = mac_addr
+        self._mac_addr = mac_addr.lower()
         self._ip_addr = ip_addr
         self._port = port
-        self._devices = devices
+        self._lights = lights
         self._registered = False  # type: bool
         self._retry_count = DEFAULT_ATTEMPTS
         self._timeout = DEFAULT_TIMEOUT
@@ -415,29 +387,32 @@ class Device(aio.DatagramProtocol):
         self._wifi_firmware_version = None  # type: Optional[str]
         self._wifi_firmware_build_timestamp = None  # type: Optional[int]
         self._last_msg = datetime.datetime.now()
+        self._color = None  # type: Optional[Color]
+        self._color_zones = []  # type: List[Color]
+        self._infrared_brightness = None  # type: Optional[int]
 
     @property
     def mac_addr(self) -> str:
-        """ Return the MAC address associated with this device. """
+        """ Return the MAC address associated with this light. """
         return self._mac_addr
 
     @property
     def label(self) -> str:
-        """ Return the cached label - if any - for this device. """
+        """ Return the cached label - if any - for this light. """
         if self._label is None:
             raise RuntimeError("Label has not been loaded")
         return self._label
 
     @property
     def group(self) -> str:
-        """ Return the cached group - if any - for this device. """
+        """ Return the cached group - if any - for this light. """
         if self._group is None:
             raise RuntimeError("Group has not been loaded")
         return self._group
 
     @property
     def ip_addr(self) -> str:
-        """ Return the MAC address associated with this device. """
+        """ Return the MAC address associated with this light. """
         return self._ip_addr
 
     def _seq_next(self) -> int:
@@ -469,21 +444,21 @@ class Device(aio.DatagramProtocol):
             self._default_callback(response)
 
     def register(self) -> None:
-        """ Register this device to `Devices` object. """
+        """ Register this light to `Lights` object. """
         if not self._registered:
             self._registered = True
-            if self._devices:
-                self._devices.register(self)
+            if self._lights:
+                self._lights.register(self)
 
     def unregister(self) -> None:
-        """ Unregister this device to `Devices` object. """
+        """ Unregister this light to `Lights` object. """
         if self._registered:
             # Only if we have not received any message recently.
             # On slower CPU, a race condition seem to sometime occur
             if datetime.datetime.now() - datetime.timedelta(seconds=self._unregister_timeout) > self._last_msg:
                 self._registered = False
-                if self._devices:
-                    self._devices.unregister(self)
+                if self._lights:
+                    self._lights.unregister(self)
 
     def renew(self, *, family: int, ip_addr: str, port: int) -> None:
         """
@@ -507,7 +482,7 @@ class Device(aio.DatagramProtocol):
             self.register()
 
     def cleanup(self) -> None:
-        """ Cleanup all resources used by this `Device` object. """
+        """ Cleanup all resources used by this `Light` object. """
         if self._transport:
             self._transport.close()
             self._transport = None
@@ -536,7 +511,7 @@ class Device(aio.DatagramProtocol):
             packed_message = msg.generate_packed_message()
             self._transport.sendto(packed_message)
             sent_msg_count += 1
-            # Max num of messages device can handle is 20 per second.
+            # Max num of messages light can handle is 20 per second.
             await aio.sleep(sleep_interval)
 
     def _fire_and_forget(
@@ -602,7 +577,7 @@ class Device(aio.DatagramProtocol):
                         del(self._message[msg.seq_num])
                     # It's dead Jim
                     self.unregister()
-                    raise DeviceOffline()
+                    raise LightOffline()
         result = self._message[msg.seq_num][2]
         del (self._message[msg.seq_num])
         return cast(GenericResponse, result)
@@ -866,7 +841,7 @@ class Device(aio.DatagramProtocol):
 
     async def get_metadata(self, *, loop: aio.AbstractEventLoop) -> None:
         """
-        Get and cache all meta data for device.
+        Get and cache all meta data for light.
 
         :param loop: The asyncio event loop.
 
@@ -891,11 +866,11 @@ class Device(aio.DatagramProtocol):
         await aio.gather(*coroutines, loop=loop)
 
     #
-    #                            Formating
+    #                            Formatting
     #
     def device_characteristics_str(self, indent: str) -> str:
         """
-        Get a multi-line string with the device characteristics.
+        Get a multi-line string with the light characteristics.
 
         :param indent: Prefix for each lines.
         :return: The resultant string.
@@ -951,9 +926,9 @@ class Device(aio.DatagramProtocol):
     @staticmethod
     def device_time_str(resp: msgtypes.StateInfo, indent: str="  ") -> str:
         """
-        Get a multi-line string for the device information.
+        Get a multi-line string for the light information.
 
-        :param resp: The device information.
+        :param resp: The light information.
         :param indent: Prefix for each line.
         :return: The resultant string.
         """
@@ -1014,31 +989,6 @@ class Device(aio.DatagramProtocol):
     def __repr__(self) -> str:
         """ Print identification. """
         return "<{} {} ({})>".format(type(self).__name__, self._label, self.mac_addr)
-
-
-class Light(Device):
-    """ Implement functions for a LIFX light. """
-
-    def __init__(
-            self, *, loop: aio.AbstractEventLoop,
-            mac_addr: str, ip_addr: str,
-            port: int=UDP_BROADCAST_PORT,
-            devices: Optional[Devices]=None) -> None:
-        """
-        Construct a new Light object.
-
-        :param loop: The Asyncio event loop.
-        :param mac_addr: The MAC Address. with the ":" and everything.
-        :param ip_addr: A string with the IP address.
-        :param port: The UDP port to use.
-        :param devices: The lights list this light belongs to.
-        """
-        mac_addr = mac_addr.lower()
-        super(Light, self).__init__(
-            loop=loop, mac_addr=mac_addr, ip_addr=ip_addr, port=port, devices=devices)
-        self._color = None  # type: Optional[Color]
-        self._color_zones = []  # type: List[Color]
-        self._infrared_brightness = None  # type: Optional[int]
 
     async def get_light_power(self) -> Power:
         """
@@ -1241,7 +1191,7 @@ class LifxDiscovery(aio.DatagramProtocol):
     def __init__(
             self, *,
             loop: aio.AbstractEventLoop,
-            devices: Optional[Devices]=None,
+            lights: Optional[Lights]=None,
             ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
             discovery_step: int=DISCOVERY_STEP) -> None:
@@ -1249,13 +1199,13 @@ class LifxDiscovery(aio.DatagramProtocol):
         Construct an `LifxDiscovery` object.
 
         :param loop: The asyncio event loop.
-        :param devices: The devices object to contain lights.
+        :param lights: The lights object to contain lights.
         :param ipv6prefix: The IPv6 prefix to use for IPv6 addresses.
         :param discovery_interval: How often should we rerun discover (seconds)?
         :param discovery_step: How often should we wake up (seconds)?
         """
-        self._lights = {}  # type: Dict[str, Light]
-        self._devices = devices  # Where to register new devices
+        self._seen = {}  # type: Dict[str, Light]
+        self._lights = lights  # Where to register new lights
         self._transport = None  # type: Optional[aio.DatagramTransport]
         self._loop = loop
         self._source_id = random.randint(0, (2 ** 32) - 1)
@@ -1302,9 +1252,9 @@ class LifxDiscovery(aio.DatagramProtocol):
             family = socket.AF_INET
             remote_ip = ip_addr
 
-        if mac_addr in self._lights:
+        if mac_addr in self._seen:
             # rediscovered
-            light = self._lights[mac_addr]  # type: Light
+            light = self._seen[mac_addr]  # type: Light
             logger.debug("Rediscovered light %s", light)
         else:
             # newly discovered
@@ -1313,8 +1263,8 @@ class LifxDiscovery(aio.DatagramProtocol):
                 mac_addr=mac_addr,
                 ip_addr=remote_ip,
                 port=remote_port,
-                devices=self._devices)
-            self._lights[mac_addr] = light
+                lights=self._lights)
+            self._seen[mac_addr] = light
             logger.debug("Discovered light %s", light)
         light.renew(family=family, ip_addr=remote_ip, port=remote_port)
 
@@ -1342,19 +1292,19 @@ class LifxDiscovery(aio.DatagramProtocol):
 
     def _register(self, alight: Light) -> None:
         """ Register discovered light. """
-        if self._devices:
-            self._devices.register(alight)
+        if self._lights:
+            self._lights.register(alight)
 
     def _unregister(self, alight: Light) -> None:
         """ Unregister lost light. """
-        if self._devices:
-            self._devices.unregister(alight)
+        if self._lights:
+            self._lights.unregister(alight)
 
     def _cleanup(self) -> None:
         """ Cleanup. FIXME: Is the actually used??? """
         if self._transport:
             self._transport.close()
             self._transport = None
-        for light in self._lights.values():
+        for light in self._seen.values():
             light.cleanup()
-        self._lights = {}
+        self._seen = {}

@@ -33,48 +33,46 @@ UDP_BROADCAST_PORT = 56700
 """ Simple light control from console. """
 
 
-class MyDevices(alix.Devices):
-    """ A simple class with a register and  unregister methods. """
-
-    def __init__(self, loop: aio.AbstractEventLoop) -> None:
-        super().__init__(loop=loop)
-        self.selected = None  # type: Optional[alix.Devices]
+class Selected:
+    def __init__(self) -> None:
+        self.lights = None  # type: Optional[alix.Lights]
 
 
-def read_in(*, loop: aio.AbstractEventLoop, devices: MyDevices) -> None:
+def read_in(
+        *,
+        loop: aio.AbstractEventLoop,
+        lights: alix.Lights,
+        selected: Selected) -> None:
     """Reading from stdin and displaying menu"""
 
     selection = sys.stdin.readline().strip("\n")
-    loop.create_task(read_in_process(selection=selection, devices=devices))
+    loop.create_task(read_in_process(
+        selection=selection,
+        lights=lights,
+        selected=selected))
 
 
-async def read_in_process(*, selection: str, devices: MyDevices) -> None:
-    selected_devices = None  # type: Optional[alix.Devices]
-    selected_lights = None   # type: Optional[alix.Lights]
-    if devices.selected is not None:
-        selected_devices = devices.selected
-        selected_lights = devices.selected.get_clone(alix.Lights)
+async def read_in_process(
+        *, selection: str, lights: alix.Lights, selected: Selected) -> None:
 
-    device_list = list(devices.device_list)  # type: List[alix.Device]
-    device_list.sort(key=lambda x: x.mac_addr)
+    light_list = list(lights)  # type: List[alix.Light]
+    light_list.sort(key=lambda x: x.mac_addr)
 
     lov = [x for x in selection.split(" ") if x != ""]
     if lov:
-        if devices.selected is not None:
-            assert selected_devices is not None
-            assert selected_lights is not None
+        if selected.lights is not None:
 
             # try:
             if True:
                 if int(lov[0]) == 0:
-                    devices.selected = None
+                    selected.lights = None
                 elif int(lov[0]) == 1:
                     if len(lov) > 1:
                         try:
-                            await devices.selected.set_power(lov[1].lower() in ["1", "on", "true"])
-                            devices.selected = None
-                        except alix.DeviceOffline:
-                            print("Error: Device is offline")
+                            await selected.lights.set_power(lov[1].lower() in ["1", "on", "true"])
+                            selected.lights = None
+                        except alix.LightOffline:
+                            print("Error: Light is offline")
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
@@ -86,9 +84,9 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                                 brightness=int(lov[1]),
                                 kelvin=int(lov[2]),
                             )
-                            await selected_lights.set_color(color)
+                            await selected.lights.set_color(color)
 
-                            devices.selected = None
+                            selected.lights = None
                         except (IndexError, ValueError):
                             print("Error: For white brightness (0-100) and temperature (2500-9000) must be numbers.\n")
                     else:
@@ -102,8 +100,8 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                                 brightness=int(lov[3]),
                                 kelvin=3500,
                             )
-                            await selected_lights.set_color(color)
-                            devices.selected = None
+                            await selected.lights.set_color(color)
+                            selected.lights = None
                         except (IndexError, ValueError):
                             print("Error: For colour hue (0-360), "
                                   "saturation (0-100) and brightness (0-100) "
@@ -113,30 +111,30 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                               "saturation (0-100) and brightness (0-100)\n")
 
                 elif int(lov[0]) == 4:
-                    for device in selected_devices.device_list:
+                    for device in selected.lights:
                         await device.get_power()
                         await device.get_group()
                         await device.get_location()
                         await device.get_version()
                         print(device.device_characteristics_str("    "))
                         print(device.device_product_str("    "))
-                    devices.selected = None
+                    selected.lights = None
                 elif int(lov[0]) == 5:
-                    for device in selected_devices.device_list:
+                    for device in selected.lights:
                         await device.get_host_firmware()
                         await device.get_wifi_firmware()
                         print(device.device_firmware_str("   "))
-                    devices.selected = None
+                    selected.lights = None
                 elif int(lov[0]) == 6:
-                    for device in selected_devices.device_list:
+                    for device in selected.lights:
                         wifi_info = await device.get_wifi_info()
                         print(device.device_radio_str(wifi_info))
-                    devices.selected = None
+                    selected.lights = None
                 elif int(lov[0]) == 7:
-                    for device in selected_devices.device_list:
+                    for device in selected.lights:
                         host_info = await device.get_host_info()
                         print(device.device_time_str(host_info))
-                    devices.selected = None
+                    selected.lights = None
                 elif int(lov[0]) == 8:
                     if len(lov) > 3:
                         try:
@@ -146,7 +144,7 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                                 brightness=int(lov[3]),
                                 kelvin=3500,
                             )
-                            await selected_lights.set_waveform(
+                            await selected.lights.set_waveform(
                                 color=color,
                                 transient=1,
                                 period=100,
@@ -154,7 +152,7 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
                                 duty_cycle=0,
                                 waveform=0
                             )
-                            devices.selected = None
+                            selected.lights = None
                         except (IndexError, ValueError):
                             print("Error: For pulse hue (0-360), "
                                   "saturation (0-100) and brightness (0-100) "
@@ -165,25 +163,24 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
         else:
 
             if lov[0] == 'group':
-                devices.selected = devices.get_by_group(lov[1])
+                selected.lights = lights.get_by_group(lov[1])
             elif lov[0] == 'label':
-                devices.selected = devices.get_by_label(lov[1])
+                selected.lights = lights.get_by_label(lov[1])
             else:
                 try:
 
                     index = int(lov[0])
                     if index > 0:
-                        if index <= len(device_list):
-                            devices.selected = devices.get_by_mac_addr(device_list[index-1].mac_addr)
+                        if index <= len(light_list):
+                            selected.lights = lights.get_by_mac_addr(light_list[index-1].mac_addr)
                         else:
                             print("\nError: Not a valid selection.\n")
 
                 except (IndexError, ValueError):
                     print("\nError: Selection must be a number.\n")
 
-    if devices.selected:
-        selected_list = devices.selected.device_list
-        print("Select Function for {}:".format(", ".join([str(d) for d in selected_list])))
+    if selected.lights is not None:
+        print("Select Function for {}:".format(", ".join([str(d) for d in selected.lights])))
         print("\t[1]\tPower (0 or 1)")
         print("\t[2]\tWhite (Brightness Temperature)")
         print("\t[3]\tColour (Hue Saturation Value)")
@@ -197,7 +194,7 @@ async def read_in_process(*, selection: str, devices: MyDevices) -> None:
     else:
         idx = 1
         print("Select Bulb:")
-        for x in device_list:
+        for x in lights:
             print("\t[{}]\t{}\t{}\t{}".format(idx, x.label, x.mac_addr, x.group))
             idx += 1
         print("")
@@ -211,18 +208,21 @@ def main() -> None:
     """ Main CLI function. """
     logging.basicConfig(level=logging.DEBUG)
     loop = aio.get_event_loop()
-    devices = MyDevices(loop=loop)
+    lights = alix.Lights(loop=loop)
+    selected = Selected()
 
     def read_in_wrapper() -> None:
-        read_in(loop=loop, devices=devices)
+        read_in(loop=loop, lights=lights, selected=selected)
 
-    devices.start_discover()  # type: aio.Task
+    lights.start_discover()  # type: aio.Task
     loop.add_reader(sys.stdin.fileno(), read_in_wrapper)
 
     try:
         print("Hit \"Enter\" to start")
         print("Use Ctrl-C to quit")
         loop.run_forever()
+    except KeyboardInterrupt:
+        pass
     except Exception as e:
         print("Got exception %s" % e)
     finally:
