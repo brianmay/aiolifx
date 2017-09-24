@@ -5,4 +5,4 @@ from .colors import Color  # NOQA
 
 __author__ = """Brian May"""
 __email__ = 'brian@linuxpenguins.xyz'
-__version__ = '0.5.6'
+__version__ = '1.0.0'
