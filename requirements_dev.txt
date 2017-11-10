@@ -6,6 +6,6 @@ watchdog==0.8.3
 flake8==3.5.0
 tox==2.9.1
 Sphinx==1.6.5
-mypy==0.540
+mypy==0.550
 pytest==3.2.3
 pytest-runner==3.0
