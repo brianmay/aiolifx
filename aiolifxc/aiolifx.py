@@ -58,7 +58,8 @@ def _mac_to_ipv6_link_local(mac: str, prefix: str) -> str:
     """ Translate a MAC address into an IPv6 address in the prefixed network"""
 
     # Remove the most common delimiters; dots, dashes, etc.
-    mac_value = int(mac.translate(str.maketrans(dict([(x, None) for x in [" ", ".", ":", "-"]]))), 16)
+    trans = str.maketrans(dict([(x, None) for x in [" ", ".", ":", "-"]]))
+    mac_value = int(mac.translate(trans), 16)
     # Split out the bytes that slot into the IPv6 address
     # XOR the most significant byte with 0x02, inverting the
     # Universal / Local bit
