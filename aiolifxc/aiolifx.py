@@ -30,7 +30,7 @@ import socket
 from typing import (
     List, Dict, Type, Optional, Union, Tuple, Callable, TypeVar,
     Iterable, Iterator,
-    Any, AnyStr, cast)
+    Any, cast, Text)
 from typing import Set  # NOQA
 
 from .colors import Color
@@ -429,7 +429,7 @@ class Light(aio.DatagramProtocol):
         self._transport = cast(aio.DatagramTransport, transport)
         self.register()
 
-    def datagram_received(self, data: AnyStr, addr: Tuple[str, int]) -> None:
+    def datagram_received(self, data: Union[bytes, Text], addr: Tuple[str, int]) -> None:
         """ Called when we receive a packet. """
         self.register()
         assert isinstance(data, bytes)
@@ -1223,7 +1223,7 @@ class LifxDiscovery(aio.DatagramProtocol):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self._loop.call_soon(self._discover)
 
-    def datagram_received(self, data: AnyStr, addr: Tuple[str, int]) -> None:
+    def datagram_received(self, data: Union[bytes, Text], addr: Tuple[str, int]) -> None:
         """ Called when we receive a packet. """
         assert isinstance(data, bytes)
         response = unpack_lifx_message(data)
