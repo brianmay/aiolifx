@@ -93,119 +93,22 @@ class LightOffline(Exception):
 
 class Lights(Iterable['Light']):
     """ Class that represents a number of Lights. """
-    def __init__(self, loop: aio.AbstractEventLoop) -> None:
-        self._light_list = []  # type: List['Light']
+    def __init__(self, loop: aio.AbstractEventLoop, light_list: List['Light']) -> None:
+        self._light_list = light_list  # type: List['Light']
         self._loop = loop
-        self._all = True
-        self._parent = None  # type: Optional['Lights']
-        self._groups = None  # type: Optional[List[str]]
-        self._labels = None  # type: Optional[List[str]]
-        self._mac_addrs = None  # type: Optional[List[str]]
-
-    def register(self, light: 'Light') -> None:
-        """
-        Add a new light.
-
-        :param light: The light to add.
-        """
-        self._loop.create_task(self.async_register(light))
-
-    async def async_register(self, light: 'Light') -> None:
-        try:
-            await light.get_metadata(loop=self._loop)
-            if self._parent is None:
-                self._light_list.append(light)
-            logger.info("Registered light %s.", light)
-        except LightOffline:
-            logger.error("Light is offline %s", light)
-
-    def unregister(self, light: 'Light') -> None:
-        """
-        Remove an existing light.
-
-        :param light: The light to remove.
-        """
-        logger.info("Unregistered light %s.", light)
-        if self._parent is None:
-            idx = 0
-            for x in list([y.mac_addr for y in self._light_list]):
-                if x == light.mac_addr:
-                    del(self._light_list[idx])
-                    break
-                idx += 1
-
-    def _filter(self, light: 'Light') -> bool:
-        # Filter list according to requirements of this object
-        if self._all:
-            return True
-
-        if self._groups is not None:
-            if light.group in self._groups:
-                return True
-
-        if self._labels is not None:
-            if light.label in self._labels:
-                return True
-
-        if self._mac_addrs is not None:
-            if light.mac_addr in self._mac_addrs:
-                return True
-
-        return False
 
     def __iter__(self) -> Iterator['Light']:
-        if self._parent is not None:
-            light_iter = iter(self._parent)
-        else:
-            light_iter = iter(self._light_list)
+        return iter(self._light_list)
 
-        return (
-            light
-            for light in light_iter
-            if self._filter(light)
-        )
-
-    def start_discover(
-            self, ipv6prefix: Optional[str]=None,
-            discovery_interval: int=DISCOVERY_INTERVAL,
-            discovery_step: int=DISCOVERY_STEP) -> None:
-        """
-        Get the Task that will discoveries.
-
-        :param ipv6prefix: The IPv6 prefix to use for IPv6 addresses.
-        :param discovery_interval: How often should we rerun discover (seconds)?
-        :param discovery_step: How often should we wake up (seconds)?
-        :return: None
-        """
-        def lifx_discovery() -> aio.BaseProtocol:
-            """ Construct an LIFX discovery protocol handler. """
-            return LifxDiscovery(
-                loop=self._loop,
-                lights=self,
-                ipv6prefix=ipv6prefix,
-                discovery_interval=discovery_interval,
-                discovery_step=discovery_step,
-            )
-
-        coro = self._loop.create_datagram_endpoint(
-            lifx_discovery,
-            local_addr=('0.0.0.0', UDP_BROADCAST_PORT),
-        )
-        self._loop.create_task(coro)
-        return
-
-    def get_clone(self) -> 'Lights':
+    def get_clone(self, light_list: List['Light']) -> 'Lights':
         """
         Get clone Lights object.
 
         :param new_class: Class to use to create new object.
         :return: The new object.
-
-        The clone will reference the objects from the parent.
         """
         # noinspection PyCallingNonCallable
-        child = type(self)(loop=self._loop)
-        child._parent = self
+        child = type(self)(loop=self._loop, light_list=light_list)
         return child
 
     def get_by_group(self, group: str) -> 'Lights':
@@ -217,9 +120,11 @@ class Lights(Iterable['Light']):
 
         The groups must be loaded already in the lights.
         """
-        result = self.get_clone()
-        result._groups = [group]
-        result._all = False
+        result = self.get_clone(light_list=[
+            light
+            for light in iter(self)
+            if light.group == group
+        ])
         return result
 
     def get_by_label(self, label: str) -> 'Lights':
@@ -231,9 +136,11 @@ class Lights(Iterable['Light']):
 
         The labels must be loaded already in the lights.
         """
-        result = self.get_clone()
-        result._labels = [label]
-        result._all = False
+        result = self.get_clone(light_list=[
+            light
+            for light in iter(self)
+            if light.group == label
+        ])
         return result
 
     def get_by_mac_addr(self, mac_addr: str) -> 'Lights':
@@ -245,30 +152,11 @@ class Lights(Iterable['Light']):
 
         The labels must be loaded already in the lights.
         """
-        result = self.get_clone()
-        result._mac_addrs = [mac_addr]
-        result._all = False
-        return result
-
-    def get_by_lists(
-            self, *,
-            groups: Optional[List[str]]=None,
-            labels: Optional[List[str]]=None,
-            mac_addrs: Optional[List[str]]=None) -> 'Lights':
-        """
-        Get a clone Lights object filtered by group list and label list.
-        :param groups: The list of groups for the filter.
-        :param labels: The list of labels for the filter.
-        :return: The new object.
-
-        The groups and labels must be loaded already in the lights.
-
-        """
-        result = self.get_clone()
-        result._groups = groups
-        result._labels = labels
-        result._mac_addrs = mac_addrs
-        result._all = False
+        result = self.get_clone(light_list=[
+            light
+            for light in iter(self)
+            if light.mac_addr == mac_addr
+        ])
         return result
 
     async def do_for_every_light(
@@ -347,8 +235,8 @@ class Light(aio.DatagramProtocol):
     # port is the port we are connected to
     def __init__(
             self, *, loop: aio.AbstractEventLoop,
-            mac_addr: str, ip_addr: str, port: int,
-            lights: Optional[Lights]=None) -> None:
+            mac_addr: str, ip_addr: str, port: int
+            ) -> None:
         """
         Construct a new Light object.
 
@@ -362,8 +250,6 @@ class Light(aio.DatagramProtocol):
         self._mac_addr = mac_addr.lower()
         self._ip_addr = ip_addr
         self._port = port
-        self._lights = lights
-        self._registered = False  # type: bool
         self._retry_count = DEFAULT_ATTEMPTS
         self._timeout = DEFAULT_TIMEOUT
         self._unregister_timeout = DEFAULT_UNREGISTER_TIMEOUT
@@ -373,8 +259,6 @@ class Light(aio.DatagramProtocol):
         # Key is the message sequence, value is (response type, Event, response)
         self._message = {}  # type: Dict[int, List]
         self._source_id = random.randint(0, (2 ** 32) - 1)
-        # Default callback for unexpected messages
-        self._default_callback = None  # type: Optional[Callable[[Message], None]]
         # And the rest
         self._label = None  # type: Optional[str]
         self._location = None  # type: Optional[str]
@@ -387,10 +271,19 @@ class Light(aio.DatagramProtocol):
         self._host_firmware_build_timestamp = None  # type: Optional[int]
         self._wifi_firmware_version = None  # type: Optional[str]
         self._wifi_firmware_build_timestamp = None  # type: Optional[int]
-        self._last_msg = datetime.datetime.now()
         self._color = None  # type: Optional[Color]
         self._color_zones = []  # type: List[Color]
         self._infrared_brightness = None  # type: Optional[int]
+
+    def _register(self) -> None:
+        self._loop.create_task(self._async_register())
+
+    async def _async_register(self) -> None:
+        try:
+            await self.get_metadata(loop=self._loop)
+            logger.info("Registered light %s.", self)
+        except LightOffline:
+            logger.error("Light is offline %s", self)
 
     @property
     def mac_addr(self) -> str:
@@ -398,17 +291,13 @@ class Light(aio.DatagramProtocol):
         return self._mac_addr
 
     @property
-    def label(self) -> str:
+    def label(self) -> Optional[str]:
         """ Return the cached label - if any - for this light. """
-        if self._label is None:
-            raise RuntimeError("Label has not been loaded")
         return self._label
 
     @property
-    def group(self) -> str:
+    def group(self) -> Optional[str]:
         """ Return the cached group - if any - for this light. """
-        if self._group is None:
-            raise RuntimeError("Group has not been loaded")
         return self._group
 
     @property
@@ -427,39 +316,25 @@ class Light(aio.DatagramProtocol):
     def connection_made(self, transport: aio.BaseTransport) -> None:
         """ Called when a connection is made. """
         self._transport = cast(aio.DatagramTransport, transport)
-        self.register()
 
     def datagram_received(self, data: Union[bytes, Text], addr: Tuple[str, int]) -> None:
         """ Called when we receive a packet. """
-        self.register()
         assert isinstance(data, bytes)
         response = unpack_lifx_message(data)
-        self._last_msg = datetime.datetime.now()
         if response.seq_num in self._message:
             response_type, myevent, __ = self._message[response.seq_num]
             if type(response) == response_type:
                 if response.source_id == self._source_id:
                     self._message[response.seq_num][2] = response
                     myevent.set()
-        elif self._default_callback:
-            self._default_callback(response)
 
-    def register(self) -> None:
-        """ Register this light to `Lights` object. """
-        if not self._registered:
-            self._registered = True
-            if self._lights:
-                self._lights.register(self)
-
-    def unregister(self) -> None:
-        """ Unregister this light to `Lights` object. """
-        if self._registered:
-            # Only if we have not received any message recently.
-            # On slower CPU, a race condition seem to sometime occur
-            if datetime.datetime.now() - datetime.timedelta(seconds=self._unregister_timeout) > self._last_msg:
-                self._registered = False
-                if self._lights:
-                    self._lights.unregister(self)
+    def is_alive(self) -> bool:
+        if self._transport is None:
+            return False
+        elif self._task is None:
+            return False
+        else:
+            return True
 
     def renew(self, *, family: int, ip_addr: str, port: int) -> None:
         """
@@ -477,10 +352,8 @@ class Light(aio.DatagramProtocol):
             coro = self._loop.create_datagram_endpoint(
                 lambda: self, family=family, remote_addr=(self._ip_addr, self._port))
             self._task = self._loop.create_task(coro)
-            # No need to call register here.
-            # Register will be called when we connection_made is called.
-        else:
-            self.register()
+
+        self._register()
 
     def cleanup(self) -> None:
         """ Cleanup all resources used by this `Light` object. """
@@ -577,7 +450,7 @@ class Light(aio.DatagramProtocol):
                     if msg.seq_num in self._message:
                         del(self._message[msg.seq_num])
                     # It's dead Jim
-                    self.unregister()
+                    self.cleanup()
                     raise LightOffline()
         result = self._message[msg.seq_num][2]
         del (self._message[msg.seq_num])
@@ -975,14 +848,6 @@ class Light(aio.DatagramProtocol):
         s += indent + "Wifi RX (bytes): {}\n".format(rx)
         return s
 
-    def register_callback(self, call_back: Callable[[Message], None]) -> None:
-        """
-        Set callback to call when we receive an unexpected message.
-
-        :param call_back: The call back function.
-        """
-        self._default_callback = call_back
-
     def __str__(self) -> str:
         """ Print identification. """
         return "{} ({})".format(self._label, self.mac_addr)
@@ -1186,13 +1051,60 @@ class Light(aio.DatagramProtocol):
         self._infrared_brightness = value
 
 
-class LifxDiscovery(aio.DatagramProtocol):
+class LifxDiscovery:
+
+    def __init__(
+            self, *,
+            loop: aio.AbstractEventLoop
+            ) -> None:
+        self._loop = loop
+        self._protocols = []  # type: List['LifxDiscoveryProtocol']
+
+    def start_discover(
+            self,
+            ipv6prefix: Optional[str]=None,
+            discovery_interval: int=DISCOVERY_INTERVAL,
+            discovery_step: int=DISCOVERY_STEP) -> None:
+        """
+        Get the Task that will discoveries.
+
+        :param ipv6prefix: The IPv6 prefix to use for IPv6 addresses.
+        :param discovery_interval: How often should we rerun discover (seconds)?
+        :param discovery_step: How often should we wake up (seconds)?
+        :return: None
+        """
+        def lifx_discovery() -> aio.BaseProtocol:
+            """ Construct an LIFX discovery protocol handler. """
+            protocol = LifxDiscoveryProtocol(
+                loop=self._loop,
+                ipv6prefix=ipv6prefix,
+                discovery_interval=discovery_interval,
+                discovery_step=discovery_step,
+            )
+            self._register_protocol(protocol)
+            return protocol
+
+        coro = self._loop.create_datagram_endpoint(
+            lifx_discovery,
+            local_addr=('0.0.0.0', UDP_BROADCAST_PORT),
+        )
+        self._loop.create_task(coro)
+        return
+
+    def _register_protocol(self, protocol: 'LifxDiscoveryProtocol') -> None:
+        self._protocols.append(protocol)
+
+    def get_lights(self) -> Lights:
+        lights = [light for protocol in self._protocols for light in protocol.get_lights()]
+        return Lights(self._loop, lights)
+
+
+class LifxDiscoveryProtocol(aio.DatagramProtocol):
     """ A protocol handler that discovers Lifx Lights. """
 
     def __init__(
             self, *,
             loop: aio.AbstractEventLoop,
-            lights: Optional[Lights]=None,
             ipv6prefix: Optional[str]=None,
             discovery_interval: int=DISCOVERY_INTERVAL,
             discovery_step: int=DISCOVERY_STEP) -> None:
@@ -1206,7 +1118,6 @@ class LifxDiscovery(aio.DatagramProtocol):
         :param discovery_step: How often should we wake up (seconds)?
         """
         self._seen = {}  # type: Dict[str, Light]
-        self._lights = lights  # Where to register new lights
         self._transport = None  # type: Optional[aio.DatagramTransport]
         self._loop = loop
         self._source_id = random.randint(0, (2 ** 32) - 1)
@@ -1214,6 +1125,9 @@ class LifxDiscovery(aio.DatagramProtocol):
         self._discovery_interval = discovery_interval
         self._discovery_step = discovery_step
         self._discovery_countdown = 0
+
+    def get_lights(self) -> List[Light]:
+        return list(self._seen.values())
 
     def connection_made(self, transport: aio.BaseTransport) -> None:
         """ Called when we receive a connection. """
@@ -1264,7 +1178,7 @@ class LifxDiscovery(aio.DatagramProtocol):
                 mac_addr=mac_addr,
                 ip_addr=remote_ip,
                 port=remote_port,
-                lights=self._lights)
+            )
             self._seen[mac_addr] = light
             logger.debug("Discovered light %s", light)
         light.renew(family=family, ip_addr=remote_ip, port=remote_port)
@@ -1276,6 +1190,14 @@ class LifxDiscovery(aio.DatagramProtocol):
             assert self._transport is not None
 
             try:
+                new_seen = {}  # type: Dict[str, Light]
+                for mac_addr, light in self._seen.items():
+                    if light.is_alive():
+                        new_seen[mac_addr] = light
+                    else:
+                        logger.info("Dropping light %s", light)
+                self._seen = new_seen
+
                 if self._discovery_countdown <= 0:
                     self._discovery_countdown = self._discovery_interval
                     logger.debug("Sending discovery packet")
@@ -1286,20 +1208,11 @@ class LifxDiscovery(aio.DatagramProtocol):
                     self._transport.sendto(msg.generate_packed_message(), (UDP_BROADCAST_IP, UDP_BROADCAST_PORT))
                 else:
                     self._discovery_countdown -= self._discovery_step
+
             except Exception:
                 logger.exception("An error occured in _discover()")
             finally:
                 self._loop.call_later(self._discovery_step, self._discover)
-
-    def _register(self, alight: Light) -> None:
-        """ Register discovered light. """
-        if self._lights:
-            self._lights.register(alight)
-
-    def _unregister(self, alight: Light) -> None:
-        """ Unregister lost light. """
-        if self._lights:
-            self._lights.unregister(alight)
 
     def _cleanup(self) -> None:
         """ Cleanup. FIXME: Is the actually used??? """

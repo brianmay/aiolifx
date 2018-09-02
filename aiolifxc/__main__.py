@@ -208,13 +208,15 @@ def main() -> None:
     """ Main CLI function. """
     logging.basicConfig(level=logging.DEBUG)
     loop = aio.get_event_loop()
-    lights = alix.Lights(loop=loop)
     selected = Selected()
 
+    discovery = alix.LifxDiscovery(loop=loop)
+    discovery.start_discover()
+
     def read_in_wrapper() -> None:
+        lights = discovery.get_lights()
         read_in(loop=loop, lights=lights, selected=selected)
 
-    lights.start_discover()  # type: aio.Task
     loop.add_reader(sys.stdin.fileno(), read_in_wrapper)
 
     try:
