@@ -2,7 +2,7 @@
 # Author: Meghan Clark
 
 import struct
-from typing import Dict, Any, Optional, Tuple, List  # NOQA
+from typing import Any, Dict, List, Optional, Tuple  # NOQA
 
 import bitstring
 

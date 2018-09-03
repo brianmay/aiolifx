@@ -22,20 +22,18 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 import asyncio as aio
-from collections import Awaitable
 import datetime
 import logging
 import random
 import socket
-from typing import (
-    List, Dict, Type, Optional, Union, Tuple, Callable, TypeVar,
-    Iterable, Iterator,
-    Any, cast, Text)
+from collections import Awaitable
 from typing import Set  # NOQA
+from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional,
+                    Text, Tuple, Type, TypeVar, Union, cast)
 
-from .colors import Color
-from .message import Message, BROADCAST_MAC
 from . import msgtypes
+from .colors import Color
+from .message import BROADCAST_MAC, Message
 from .products import product_map
 from .unpack import unpack_lifx_message
 

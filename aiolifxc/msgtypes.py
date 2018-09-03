@@ -6,10 +6,11 @@
 # particular: Color [0-65535, 0-65535, 0-65535, 2500-9000], Power Level (must be 0 OR 65535)
 # Need to look into assert-type frameworks or something, there has to be a tool for that.
 # Also need to make custom errors possibly, though tool may have those.
-from typing import Dict, Any
+from typing import Any, Dict
+
+import bitstring
 
 from .message import Message, little_endian
-import bitstring
 
 # DEVICE MESSAGES
 

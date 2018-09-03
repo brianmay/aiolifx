@@ -1,10 +1,10 @@
 # unpack.py
 # Author: Meghan Clark
+import binascii
 import struct
 
-from .message import Message, HEADER_SIZE_BYTES
 from . import msgtypes
-import binascii
+from .message import HEADER_SIZE_BYTES, Message
 
 # Creates a LIFX Message out of packed binary data
 # If the message type is not one of the officially released ones above, it will create just a Message out of it
